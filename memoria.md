@@ -27,7 +27,6 @@ w'_i\mathbf{x}_i^T  & \mathbf{0}^T  & -x'_i\mathbf{x}_i^T \end{matrix}\right)
 Fijada la homografía podemos definir a partir de esta matriz la función de *error algebraico* $\mathcal{C}_H(\mathbf{X}) = A(\mathbf{X})h$.
 
 # Error de Sampson
-
 ## Descripción y derivación
 
 El error de Sampson es una función de coste aplicable a problemas generales de estimación en visión por computador.
@@ -74,3 +73,39 @@ lo que nos permite calcular $JJ^T$ directamente a partir de $\mathcal{C}_H$.
 En el algoritmo general tendremos múltiples correspondencias.
 El error de Sampson para las múltiples correspondencias será la suma de los errores de Sampson individuales, esto es
 $$\mathcal{S}_H(\{\mathbf{x}_i \leftrightarrow \mathbf{x}'_i\}_{i = 1, \dots, N}) = \sum_{i = 1}^N \mathcal{S}_H(\mathbf{X}_i)$$
+
+# Algoritmo de estimación de homografías
+
+En esta sección describimos el algoritmo iterativo de estimación de homografías 2D a partir de un conjunto de correspondencias haciendo uso del error de Sampson.
+
+## Estimación inicial
+
+El algoritmo iterativo necesita una estimación inicial a partir de la cuál iterar hasta converger en un mínimo.
+En principio podría utilizarse una estimación inicial que no dependiera del conjunto de correspondencias.
+Sin embargo, en la práctica, el uso de este tipo de estimaciones iniciales no proporciona buenos resultados, ya que el algoritmo tiende a converger a mínimos locales lejos del óptimo.
+
+Por tanto, para la estimación inicial seguiremos la recomendación de [TODO referencia] para utilizar el método *DLT* con normalización, descrito por el siguiente algoritmo.
+
+:::{.algorithm name="\textit{Direct Linear Transform} normalizado"}
+
+$\;$
+
+Entrada
+: Un conjunto de correspondencias $\{\mathbf{x}_i \leftrightarrow \mathbf{x}'_i\}_{i = 1, \dots, N}$ en coordenadas homogéneas.
+
+Salida
+:  Homografía dada por su expresión matricial $H \in \mathcal{M}_{3 \times 3}(\mathbb{R})$ que se ajusta a las correspondencias.
+
+1. Normalizar $\mathcal{X} = \{\mathbf{x}_i\}_{i = 1,\dots, N}$ mediante una transformación $T$ compuesta de
+   a) una traslación que lleve el centroide de $\mathcal{X}$ al origen y
+   b) un escalado que lleve la distancia media al origen a $\sqrt{2}$.
+2. Normalizar $\mathcal{X}' = \{\mathbf{x}'_i\}_{i = 1,\dots, N}$ mediante una transformación $T'$ compuesta de
+   a) una traslación que lleve el centroide de $\mathcal{X}'$ al origen y
+   b) un escalado que lleve la distancia media al origen a $\sqrt{2}$.
+3. Para cada correspondencia $\mathbf{x}_i \leftrightarrow \mathbf{x}'_i$ calcular la matriz $A_i$,
+4. Concatenar las matrices $A_i$ en una única matriz $A$,
+5. Calcular el vector singular asociado al menor valor singular de la descomposición en valores de $A$.
+6. Transformar ese vector en una matriz $\overset{\sim}{H}$.
+7. Devolver la composición de las matrices de transformación con la homografía estimada $T'^{-1}\overset{\sim}{H}T$.
+:::
+
