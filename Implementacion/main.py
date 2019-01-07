@@ -5,10 +5,36 @@
 
 import argparse
 import math
+import numpy as np
+
+def normaliza(puntos, inv = False):
+  """Normaliza un conjunto de puntos.
+  Argumentos posicionales:
+  - puntos: Conjunto de vectores de dimensión n.
+  Argumentos opcionales:
+  - inv: Flag que indica si se devuelve la transformación directa o inversa
+  Devuelve:
+  - Conjunto de puntos con centroide cero y distancia media al centroide $\sqrt{2}$
+  - Matriz que lleva el conjunto original al conjunto devuelto (o inversa)"""
+
+  centroid = np.sum(puntos)/len(puntos)
+  dist = np.linalg.norm(puntos - centroid) # TODO: Arreglar
+
+  pass
 
 def inicialHom(corr):
-  """Obtiene una estimación inicial de la homografía"""
-  pass
+  """Obtiene una estimación inicial de la homografía
+  Argumentos posicionales:
+  - corr: Lista de pares de correspondencias
+  Devuelve:
+  - Estimación inicial de homografía que ajusta estas correspondencias"""
+
+  orig, T_orig = normaliza(np.fromiter(x for x,y in corr,float))
+  dest, T_dest = normaliza(np.fromiter(y for x,y in corr, float), inv = True)
+
+  # TODO: Coger de las prácticas
+
+  return T_dest*H*T_orig
 
 def iteracion(H, err, corr):
   """Realiza un paso del algoritmo iterativo"""
