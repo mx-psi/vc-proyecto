@@ -10,31 +10,68 @@ import numpy as np
 def normaliza(puntos, inv = False):
   """Normaliza un conjunto de puntos.
   Argumentos posicionales:
-  - puntos: Conjunto de vectores de dimensión n.
+  - puntos: Array np de vectores de dimensión n.
   Argumentos opcionales:
   - inv: Flag que indica si se devuelve la transformación directa o inversa
   Devuelve:
   - Conjunto de puntos con centroide cero y distancia media al centroide $\sqrt{2}$
   - Matriz que lleva el conjunto original al conjunto devuelto (o inversa)"""
 
-  centroid = np.sum(puntos)/len(puntos)
-  dist = np.linalg.norm(puntos - centroid) # TODO: Arreglar
+  # Centroide
+  centroide = np.mean(puntos, axis = 0)
 
-  pass
+  # Distancia media al centroide
+  distancia_media = np.mean(np.linalg.norm(puntos - centroide, axis = 1))
 
-def inicialHom(corr):
+  # Factor de escalado para normalizar distacia media
+  escalado = math.sqrt(2)/distancia_media
+
+  if inv:
+    S = np.diag([1/escalado,1/escalado,1])
+    tx,ty = centroide
+    T = np.array([[1,0,tx], [0,1,ty], [0,0,1]])
+    M = T@S
+  else:
+    tx,ty = - centroide
+    T = np.array([[1,0,tx], [0,1,ty], [0,0,1]])
+    S = np.diag([escalado,escalado,1])
+    M = S@T
+
+  # Calcula valores a devolver
+  normalizados = escalado*(puntos - centroide)
+  return normalizados, M
+
+
+def inicialHom(origs, dests):
   """Obtiene una estimación inicial de la homografía
   Argumentos posicionales:
-  - corr: Lista de pares de correspondencias
+  - origs: Lista de orígenes
+  - dests: Lista de coordenadas de destinos
   Devuelve:
   - Estimación inicial de homografía que ajusta estas correspondencias"""
 
-  orig, T_orig = normaliza(np.fromiter(x for x,y in corr,float))
-  dest, T_dest = normaliza(np.fromiter(y for x,y in corr, float), inv = True)
+  orig_n, T_orig = normaliza(origs)
+  dest_n, T_dest = normaliza(dests, inv = True)
 
-  # TODO: Coger de las prácticas
+  v = np.zeros(3)
+  A = None
 
-  return T_dest*H*T_orig
+  # Para cada correspondencia concatena la matriz Ai
+  for src, dst in zip(orig_n, dest_n):
+    # TODO: Asumo que las correspondencias vienen dadas en coordenadas inhomogéneas
+    src_h = np.append(src, 1)
+    f1 = np.concatenate((v, - src_h, dst[1]*src_h))
+    f2 = np.concatenate((src_h, v, -dst[0]*src_h))
+    if A is None:
+      A = np.vstack((f1, f2))
+    else:
+      A = np.vstack((A, f1, f2))
+
+  # Halla SVD
+  *_, V = np.linalg.svd(A)
+  H = V[-1,:].reshape((3,3))
+
+  return T_dest@H@T_orig
 
 def iteracion(H, err, corr):
   """Realiza un paso del algoritmo iterativo"""
@@ -83,4 +120,14 @@ if __name__ == "__main__":
     # TODO: Cargar imágenes
   else:
     print("Modo de ejemplo")
+    puntos = np.array([[0,3],[4,3],[-2,3],[-2,-2]])
+
+    norm, T = normaliza(puntos, inv = True)
+    centroide = np.mean(norm, axis = 0)
+    distancia_media = np.mean(np.linalg.norm(norm, axis = 1))
+    print(centroide)
+    print(distancia_media)
+
+    corr = np.array([[p,p] for p in puntos], float)
+    print(inicialHom(puntos, puntos))
     # TODO: Elegir imágenes por defecto
