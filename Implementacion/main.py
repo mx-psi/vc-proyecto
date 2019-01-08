@@ -120,7 +120,7 @@ if __name__ == "__main__":
     # TODO: Cargar imágenes
   else:
     print("Modo de ejemplo")
-    puntos = np.array([[0,3],[4,3],[-2,3],[-2,-2]])
+    puntos = np.random.rand(4,2)
 
     norm, T = normaliza(puntos, inv = True)
     centroide = np.mean(norm, axis = 0)
@@ -129,5 +129,6 @@ if __name__ == "__main__":
     print(distancia_media)
 
     corr = np.array([[p,p] for p in puntos], float)
-    print(inicialHom(puntos, puntos))
+    H = inicialHom(puntos, puntos)
+    print(H/H[2,2])
     # TODO: Elegir imágenes por defecto
