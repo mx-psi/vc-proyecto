@@ -58,7 +58,7 @@ Para el cálculo algorítmico del error de Sampson para una correspondencia nece
 Siguiendo la notación que utilizamos al plantear el error algebraico, si notamos cada fila de la matriz $A_i$ como $A^{(j)}$ y notamos $\mathbf{X} = (\mathbf{X}_1, \mathbf{X}_2, \mathbf{X}_3, \mathbf{X}_4) = (x,y,x',y')$ entonces tenemos que
 $$J = \frac{\partial \mathcal{C}_H}{\mathbf{X}} \overset{\text{def}}{=} \left(\frac{\partial A^{(l)}}{\partial \mathbf{X}_j}\right)_{l,j} = \left
 (\begin{matrix}
--w'_ih_{21} + y'_ih_{31} & -h_{22} + y'_ih_{32} & 0 &  xh_{31} + yh_{32} + h_{33} \\ 
+-w'_ih_{21} + y'_ih_{31} & -w'_ih_{22} + y'_ih_{32} & 0 &  xh_{31} + yh_{32} + h_{33} \\ 
 w_ih_{11} - x'_ih_{31} & w_ih_{12}-x'_ih_{32} & xh_{31} + yh_{32} + h_{33} & 0
 \end{matrix}\right)$$
 
