@@ -7,6 +7,53 @@ import argparse
 import math
 import numpy as np
 
+
+def calcula_C_Hx(punto, imagen, h):
+
+    x_i, y_i, w_i = imagen
+    first_row = np.concatenate(([0,0,0], -w_i*punto, y_i*punto), axis=None)
+    second_row = np.concatenate((w_i*punto, [0,0,0], -x_i*punto), axis=None)
+    m = np.vstack((first_row, second_row))
+
+    h_t = np.vstack(h)
+
+    return m.dot(h_t)
+
+def calcula_JJT(punto, imagen, h):
+    punto_e1 = punto.copy()
+    punto_e1[0] = punto_e1[0] + 1
+
+    punto_e2 = punto.copy()
+    punto_e2[1] += 1
+
+    imagen_e3 = imagen.copy()
+    imagen_e3[0] += 1
+
+    imagen_e4 = imagen.copy()
+    imagen_e4[1] += 1
+
+    original = calcula_C_Hx(punto, imagen, h)
+    parcial_1 = calcula_C_Hx(punto_e1, imagen, h) - original
+    parcial_2 = calcula_C_Hx(punto_e2, imagen, h) - original
+    parcial_3 = calcula_C_Hx(punto, imagen_e3, h) - original
+    parcial_4 = calcula_C_Hx(punto, imagen_e4, h) - original
+
+
+    parcial_1 = parcial_1.dot(np.transpose(parcial_1))
+    parcial_2 = parcial_2.dot(np.transpose(parcial_2))
+    parcial_3 = parcial_3.dot(np.transpose(parcial_3))
+    parcial_4 = parcial_4.dot(np.transpose(parcial_4))
+
+    return (parcial_1 + parcial_2 + parcial_3 + parcial_4)
+
+def calcula_error_sampson(punto, imagen, h):
+    epsilon = calcula_C_Hx(punto, imagen, h)
+    lamb = np.linalg.solve(calcula_JJT(punto, imagen, h), -epsilon)
+
+    return np.transpose(epsilon).dot(-lamb)
+
+
+
 def normaliza(puntos, inv = False):
   """Normaliza un conjunto de puntos.
   Argumentos posicionales:
