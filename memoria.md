@@ -2,7 +2,7 @@
 
 TODO: Describir el problema en términos generales, sus aplicaciones, qué hemos hecho en el trabajo, etc.
 
-En este proyecto seguiremos la notación empleada por el libro TODO.
+En este proyecto seguiremos la notación empleada por el libro [@hartley2003multiple].
 
 # El problema de estimación de homografías
 
@@ -18,7 +18,7 @@ Además, en lo sucesivo utilizaremos $h$ para referirnos a un vector de $\mathbb
 
 - TODO: Describir el cálculo en el caso exacto para 4 correspondencias. 
 
-La expresión matricial por bloques del sistema de ecuaciones que define una correspondencia, notando $\mathbf{x}_i = (x_i, y_i, w_i)$, $\mathbf{x}'_i = (x'_i, y'_i, w'_i)$ y $H = (h^1 h^2 h^3)^T$ por filas es (TODO citar 4.3 p.89)
+La expresión matricial por bloques del sistema de ecuaciones que define una correspondencia, notando $\mathbf{x}_i = (x_i, y_i, w_i)$, $\mathbf{x}'_i = (x'_i, y'_i, w'_i)$ y $H = (h^1 h^2 h^3)^T$ por filas es ([@hartley2003multiple 4.3 p.89])
 $$A_iH =
 \left(\begin{matrix}\mathbf{0}^T & -w'_i\mathbf{x}_i^T & y'_i\mathbf{x}_i^T \\
 w'_i\mathbf{x}_i^T  & \mathbf{0}^T  & -x'_i\mathbf{x}_i^T \end{matrix}\right)
@@ -31,7 +31,7 @@ Fijada la homografía podemos definir a partir de esta matriz la función de *er
 
 El error de Sampson es una función de coste aplicable a problemas generales de estimación en visión por computador.
 En el caso de la estimación de homografías aproxima el *error geométrico*, esto es, a la distancia euclídea entre $H\mathbf{x}_i$ y $\mathbf{x}'_i$, dando mejores resultados que reducir en norma el error algebraico.
-A continuación hacemos un breve resumen de la derivación teórica del error de Sampson para una sola correspondencia siguiendo el desarrollo y la notación de TODO.
+A continuación hacemos un breve resumen de la derivación teórica del error de Sampson para una sola correspondencia siguiendo el desarrollo y la notación de [@hartley2003multiple].
 
 La idea del error de Sampson es: dada una correspondencia expresada en coordenadas inhomogéneas como $\mathbf{X} = (x,y,x',y')$ estimar la correspondencia exacta para $H$ más cercana mediante una aproximación lineal de la función de error algebraico.
 
@@ -84,7 +84,7 @@ El algoritmo iterativo necesita una estimación inicial a partir de la cuál ite
 En principio podría utilizarse una estimación inicial que no dependiera del conjunto de correspondencias.
 Sin embargo, en la práctica, el uso de este tipo de estimaciones iniciales no proporciona buenos resultados, ya que el algoritmo tiende a converger a mínimos locales lejos del óptimo.
 
-Por tanto, para la estimación inicial seguiremos la recomendación de [TODO referencia] para utilizar el método *DLT* con normalización, descrito por el siguiente algoritmo.
+Por tanto, para la estimación inicial seguiremos la recomendación de [@hartley2003multiple] para utilizar el método *DLT* con normalización, descrito por el siguiente algoritmo.
 
 :::{.algorithm name="\textit{Direct Linear Transform} normalizado"}
 
