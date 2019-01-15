@@ -24,4 +24,4 @@ propuesta.pdf: propuesta.md
 	pandoc $^ -o $@
 
 clean:
-	rm $(OUT)
+	rm $(OUTPDF)
