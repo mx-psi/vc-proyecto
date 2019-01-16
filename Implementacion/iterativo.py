@@ -21,7 +21,7 @@ def e(N, i):
   return v
 
 
-def jacobiana(f, x):
+def jacobiana(f, x, delta = None):
   """Aproxima la traspuesta del jacobiano de f en x mediante el cálculo de
   diferencias finitas de primer orden en cada componente.
 
@@ -34,7 +34,9 @@ def jacobiana(f, x):
 
   # Calcula tamaño de delta
   # en función de fórmula dada en Multiple View in Geometry (Apéndice A6.2)
-  delta = np.maximum(1e-6, 1e-4*x)
+  if delta is None:
+    delta = np.maximum(1e-6, 1e-4*x)
+
   N = x.size
   fx = f(x)
 

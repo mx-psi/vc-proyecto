@@ -9,50 +9,88 @@ import numpy as np
 import iterativo
 
 
-def calcula_C_Hx(punto, imagen, h):
+def C_Hx(orig, dest, h):
+  """Calcula C_H(X) donde X = (orig, dest) y H es la homografía asociada al vector h.
+  Argumentos posicionales:
+  - orig: Punto de origen en coordenadas TODO
+  - dest: Punto de destino en coordenadas TODO
+  - h: Matriz de homografía redimensionada como vector de R⁹
+  Devuelve:
+  - Evaluación de C_H(X) con X = (orig, dest)"""
 
-    x_i, y_i, w_i = imagen
-    first_row = np.concatenate(([0,0,0], -w_i*punto, y_i*punto), axis=None)
-    second_row = np.concatenate((w_i*punto, [0,0,0], -x_i*punto), axis=None)
-    m = np.vstack((first_row, second_row))
+  x_i, y_i, w_i = dest
+  first_row = np.concatenate(([0,0,0], -w_i*orig, y_i*orig), axis=None)
+  second_row = np.concatenate((w_i*orig, [0,0,0], -x_i*orig), axis=None)
+  m = np.vstack((first_row, second_row))
 
-    h_t = np.vstack(h)
+  h_t = np.vstack(h)
 
-    return m.dot(h_t)
+  return m.dot(h_t)
 
-def calcula_JJT(punto, imagen, h):
-    punto_e1 = punto.copy()
-    punto_e1[0] = punto_e1[0] + 1
+def JJT(orig, dest, h):
+  """Función auxiliar para el cálculo del error de Sampson.
+  Argumentos posicionales:
+  - orig: Punto de origen en coordenadas TODO
+  - dest: Punto de destino en coordenadas TODO
+  - h: Matriz de homografía redimensionada como vector de R⁹
 
-    punto_e2 = punto.copy()
-    punto_e2[1] += 1
+  Devuelve:
+  - JJ.T, donde J es la matriz jacobiana de C_H(X)
+  """
 
-    imagen_e3 = imagen.copy()
-    imagen_e3[0] += 1
+  orig_e1 = orig.copy()
+  orig_e1[0] = orig_e1[0] + 1
 
-    imagen_e4 = imagen.copy()
-    imagen_e4[1] += 1
+  orig_e2 = orig.copy()
+  orig_e2[1] += 1
 
-    original = calcula_C_Hx(punto, imagen, h)
-    parcial_1 = calcula_C_Hx(punto_e1, imagen, h) - original
-    parcial_2 = calcula_C_Hx(punto_e2, imagen, h) - original
-    parcial_3 = calcula_C_Hx(punto, imagen_e3, h) - original
-    parcial_4 = calcula_C_Hx(punto, imagen_e4, h) - original
+  dest_e3 = dest.copy()
+  dest_e3[0] += 1
+
+  dest_e4 = dest.copy()
+  dest_e4[1] += 1
+
+  original = C_Hx(orig, dest, h)
+  parcial_1 = C_Hx(orig_e1, dest, h) - original
+  parcial_2 = C_Hx(orig_e2, dest, h) - original
+  parcial_3 = C_Hx(orig, dest_e3, h) - original
+  parcial_4 = C_Hx(orig, dest_e4, h) - original
+
+  parcial_1 = parcial_1.dot(np.transpose(parcial_1))
+  parcial_2 = parcial_2.dot(np.transpose(parcial_2))
+  parcial_3 = parcial_3.dot(np.transpose(parcial_3))
+  parcial_4 = parcial_4.dot(np.transpose(parcial_4))
+
+  return (parcial_1 + parcial_2 + parcial_3 + parcial_4)
 
 
-    parcial_1 = parcial_1.dot(np.transpose(parcial_1))
-    parcial_2 = parcial_2.dot(np.transpose(parcial_2))
-    parcial_3 = parcial_3.dot(np.transpose(parcial_3))
-    parcial_4 = parcial_4.dot(np.transpose(parcial_4))
+def error_sampson_corr(orig, dest, h):
+  """Calcula el error de Sampson para una correspondencia.
+  Argumentos posicionales:
+  - orig: Punto de origen en coordenadas TODO
+  - dest: Punto de destino en coordenadas TODO
+  - h: Matriz de homografía redimensionada como vector de R⁹
+  Devuelve:
+  - El error de Sampson para la correspondencia"""
 
-    return (parcial_1 + parcial_2 + parcial_3 + parcial_4)
+  epsilon = C_Hx(orig, dest, h)
+  lamb = np.linalg.solve(JJT(orig, dest, h), -epsilon)
 
-def calcula_error_sampson(punto, imagen, h):
-    epsilon = calcula_C_Hx(punto, imagen, h)
-    lamb = np.linalg.solve(calcula_JJT(punto, imagen, h), -epsilon)
+  return np.transpose(epsilon).dot(-lamb)
 
-    return np.transpose(epsilon).dot(-lamb)
 
+def error_sampson(corr,h):
+  """Calcula el error de Sampson para un conjunto de correspondencias.
+  Argumentos posicionales:
+  - corr: Iterable con pares de puntos origen, destino en coordenadas TODO
+  - h: Matriz de homografía redimensionada como vector de R⁹
+  Devuelve:
+  - El error de Sampson para el conjunto de correspondencias"""
+
+  err = 0
+  for orig, dest in corr:
+    err += error_sampson_corr(orig, dest, h)
+  return err
 
 
 def normaliza(puntos, inv = False):
@@ -135,7 +173,7 @@ def getHom(corr):
   inicial = inicialHom(corr).reshape((9,)) # Valor inicial dado por DLT
   h, err = iterativo.lm(f, inicial, 0)
 
-  return h.reshape(3,3), err
+  return h.reshape((3,3)), err
 
 
 def showHom(im1, im2):
