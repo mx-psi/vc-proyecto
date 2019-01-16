@@ -6,6 +6,7 @@
 import argparse
 import math
 import numpy as np
+import iterativo
 
 
 def calcula_C_Hx(punto, imagen, h):
@@ -120,31 +121,21 @@ def inicialHom(origs, dests):
 
   return T_dest@H@T_orig
 
-def iteracion(H, err, corr):
-  """Realiza un paso del algoritmo iterativo"""
-  pass
 
-def getHom(corr, umbral = 1e-4, N = 1000):
+def getHom(corr):
   """Obtiene una homografía a partir de una lista de correspondencias.
   Argumentos posicionales:
   - corr: Lista de pares de puntos en coordenadas inhomogéneas
-  Argumentos opcionales:
-  - umbral: Umbral por debajo del cuál el error es aceptable
-  - N: Número máximo de iteraciones
   Devuelve:
   - Matriz 3x3 que representa la homografía
   - Error residual de la homografía
   """
 
-  H = inicialHom(corr)
-  err = math.inf
-  n = 0
+  f = lambda h: error_sampson(corr, h) # Minimiza error de Sampson
+  inicial = inicialHom(corr).reshape((9,)) # Valor inicial dado por DLT
+  h, err = iterativo.lm(f, inicial, 0)
 
-  while err > umbral or n < N:
-    H, err = iteracion(H,err,corr)
-    n += 1
-
-  return H, err
+  return h.reshape(3,3), err
 
 
 def showHom(im1, im2):
