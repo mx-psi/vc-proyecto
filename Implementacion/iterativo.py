@@ -76,7 +76,9 @@ def lm(f, inicial, objetivo, umbral = 1e-4, max_iter = 1000):
 
   while norm > umbral and iters < max_iter:
     J = jacobiana(f, x)
-    delta = np.linalg.solve(J@J.T + augment*I, -J@epsilon)
+    print(J)
+    print(J.dot(J.T) + augment*I)
+    delta = np.linalg.solve(J.dot(J.T) + augment*I, -J.dot(epsilon))
 
     candidate = x + delta
     cand_norm = np.linalg.norm(f(candidate) - objetivo)

@@ -6,8 +6,10 @@
 import argparse
 import math
 import numpy as np
+import cv2
 import iterativo
-
+import ChecaP2
+from scipy import optimize
 
 def C_Hx(orig, dest, h):
   """Calcula C_H(X) donde X = (orig, dest) y H es la homografía asociada al vector h.
@@ -18,9 +20,18 @@ def C_Hx(orig, dest, h):
   Devuelve:
   - Evaluación de C_H(X) con X = (orig, dest)"""
 
-  x_i, y_i, w_i = dest
-  first_row = np.concatenate(([0,0,0], -w_i*orig, y_i*orig), axis=None)
-  second_row = np.concatenate((w_i*orig, [0,0,0], -x_i*orig), axis=None)
+  if len(dest) == 2:
+      x_i, y_i = dest
+      w_i = 1
+  else:
+      x_i, y_i, w_i = dest
+
+  if len(orig) == 2:
+      orig_mod = np.append(orig,1)
+  else:
+      orig_mod = orig
+  first_row = np.concatenate(([0,0,0], -w_i*orig_mod, y_i*orig_mod), axis=None)
+  second_row = np.concatenate((w_i*orig_mod, [0,0,0], -x_i*orig_mod), axis=None)
   m = np.vstack((first_row, second_row))
 
   h_t = np.vstack(h)
@@ -79,7 +90,7 @@ def error_sampson_corr(orig, dest, h):
   return np.transpose(epsilon).dot(-lamb)
 
 
-def error_sampson(corr,h):
+def error_sampson(origs, dests,h):
   """Calcula el error de Sampson para un conjunto de correspondencias.
   Argumentos posicionales:
   - corr: Iterable con pares de puntos origen, destino en coordenadas TODO
@@ -88,8 +99,8 @@ def error_sampson(corr,h):
   - El error de Sampson para el conjunto de correspondencias"""
 
   err = 0
-  for orig, dest in corr:
-    err += error_sampson_corr(orig, dest, h)
+  for i in range(len(origs)):
+    err += error_sampson_corr(origs[i], dests[i], h)
   return err
 
 
@@ -116,12 +127,12 @@ def normaliza(puntos, inv = False):
     S = np.diag([1/escalado,1/escalado,1])
     tx,ty = centroide
     T = np.array([[1,0,tx], [0,1,ty], [0,0,1]])
-    M = T@S
+    M = T.dot(S)
   else:
     tx,ty = - centroide
     T = np.array([[1,0,tx], [0,1,ty], [0,0,1]])
     S = np.diag([escalado,escalado,1])
-    M = S@T
+    M = S.dot(T)
 
   # Calcula valores a devolver
   normalizados = escalado*(puntos - centroide)
@@ -157,10 +168,10 @@ def inicialHom(origs, dests):
   *_, V = np.linalg.svd(A)
   H = V[-1,:].reshape((3,3))
 
-  return T_dest@H@T_orig
+  return T_dest.dot(H).dot(T_orig)
 
 
-def getHom(corr):
+def getHom(origs, dests):
   """Obtiene una homografía a partir de una lista de correspondencias.
   Argumentos posicionales:
   - corr: Lista de pares de puntos en coordenadas inhomogéneas
@@ -169,10 +180,11 @@ def getHom(corr):
   - Error residual de la homografía
   """
 
-  f = lambda h: error_sampson(corr, h) # Minimiza error de Sampson
-  inicial = inicialHom(corr).reshape((9,)) # Valor inicial dado por DLT
-  h, err = iterativo.lm(f, inicial, 0)
-
+  f = lambda h: error_sampson(origs, dests, h) # Minimiza error de Sampson
+  inicial = inicialHom(origs, dests).reshape((9,)) # Valor inicial dado por DLT
+  #h, err = iterativo.lm(f, inicial, 0)
+  sol = optimize.root(f, inicial, method='lm')
+  print(sol.x)
   return h.reshape((3,3)), err
 
 
@@ -197,6 +209,64 @@ if __name__ == "__main__":
   else:
     print("Modo de ejemplo")
     puntos = np.random.rand(4,2)
+    im1 = ChecaP2.lee_imagen("./imagenes/yosemite1.jpg",1)
+    im2 = ChecaP2.lee_imagen("./imagenes/yosemite2.jpg",1)
+
+    # Cogemos los descriptores de las tres imágenes y sus keypoints
+    kp1, des1 = ChecaP2.ejercicio1cSift(im1)
+    kp2, des2 = ChecaP2.ejercicio1cSift(im2)
+
+    # Cogemos los matchers que van en dirección a la imagen central im2
+    # Esto se realiza de esta forma para evitar acumulación de errores
+    # Los matchers los cogemos con Lowe2nn que era el que tenía más calidad del
+    # ejercicio 2
+    matcher12 = ChecaP2.getMatchesLowe2NN(des1, des2)
+
+    # Recogemos las listas de keypoints de cada matcher ordenadas según las
+    # correspondencias
+    orderSrcKp1, orderDstKp12 = ChecaP2.getOrderedKeypoints(kp1, kp2, matcher12)
+    #(s_x, s_y) es el tamaño final de nuestro canvas
+    # Estos valores se han cogido así porque son los que van bien con las imágenes
+    # de yosemite
+    s_x = 1400
+    s_y = 600
+    # Se crea el canvas final de tamaño s_x x s_y con tres bandas y uint8 por elemento
+    canvas_final = np.zeros((s_x,s_y,3), np.uint8)
+
+    # hi, wi es la altura y anchura de la imagen central
+    hi = im2.shape[0]
+    wi = im2.shape[1]
+    # Punto en el que anclamos la imagen central dentro del canvas
+    p_x = 350
+    p_y = 50
+    # Homografía de la imagen central al canvas. Es solo una traslación de las esquinas
+    # a un rectángulo del mismo tamaño centrado dentro del canvas
+    # Como va a ser exacta, de cuatro puntos en cuatro puntos, no necesitamos
+    # aclarar que utilice cv2.RANSAC
+    h_canvas, mask = cv2.findHomography(np.array([[0,0], [wi, 0], [0,hi], [wi, hi]]), np.array([[p_x, p_y], [p_x+wi, p_y], [p_x, hi+p_y], [wi+p_x, hi+p_y]]))
+
+    # Hallamos las otras dos homografías, en dirección a la imagen central
+    # Esta vez se aclara que se utilice RANSAC con un máximo error de proyección
+    # de 1 para los inliners
+    #h1, mask = cv2.findHomography(orderSrcKp1, orderDstKp12, cv2.RANSAC, ransacReprojThreshold=1)
+
+    # Sustituimos encontrar la homografía y lo hacemos con getHom en lugar de findHomography
+    ordSrcMod = np.array([orderSrcKp1[i][0] for i in range(len(orderSrcKp1))])
+    ordDstMod = np.array([orderDstKp12[i][0] for i in range(len(orderDstKp12))])
+    h1 = getHom(ordSrcMod, ordDstMod)
+    # Se crea la imagen final haciendo llamadas a warpPerspective de cada imagen
+    # con sus transformaciones correspondientes
+    # Mientras que la central solo es la homografía que hemos hallado antes,
+    # para las de los extremos necesitamos componer las homografías que las llevan
+    # a la central con la que la lleva a canvas. Como lo primero que se aplica son
+    # las que la llevan a la central, el orden al componer es h_canvas * h_12
+    # y h_canvas * h_32. Este producto se hace con dot
+    canvas_final2 = canvas_final
+    # El borderMode del primer warpPerspective se pone a Constant para el fondo
+    # El resto de borderMode se ponen a TRANSPARENT para no pisar el resto de imágenes
+    canvas_final2 = cv2.warpPerspective(im1,  h_canvas.dot(h1), (s_x, s_y), canvas_final, borderMode = cv2.BORDER_CONSTANT)
+    canvas_final2 = cv2.warpPerspective(im2, h_canvas, (s_x, s_y), canvas_final2, borderMode = cv2.BORDER_TRANSPARENT)
+    ChecaP2.pintaI(canvas_final2, "prueba")
 
     norm, T = normaliza(puntos, inv = True)
     centroide = np.mean(norm, axis = 0)
