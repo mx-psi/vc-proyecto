@@ -43,7 +43,6 @@ def jacobiana(f, x, delta = None):
   ders = []
   for i in range(N): # Añade las derivadas parciales respecto de xi
     ders.append((f(x + delta*e(N,i)) - fx)/delta[i])
-
   return np.vstack(ders)
 
 
@@ -77,8 +76,7 @@ def lm(f, inicial, objetivo, umbral = 1e-4, max_iter = 1000):
   while norm > umbral and iters < max_iter:
     J = jacobiana(f, x)
 
-    delta = np.linalg.solve(J.dot(J.T) + augment*I, -J.dot(epsilon))
-    delta = [delta[0][i] for i in range(len(delta[0]))]
+    delta = np.linalg.solve(J.dot(J.T) + augment*I, -J.dot(epsilon)).reshape((9,))
     candidate = x + delta
     cand_norm = np.linalg.norm(f(candidate) - objetivo)
     if cand_norm < norm:
