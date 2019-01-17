@@ -213,8 +213,8 @@ def main():
     im2 = auxiliar.lee_imagen("./imagenes/yosemite2.jpg",1)
 
     # Cogemos los descriptores de las tres imágenes y sus keypoints
-    kp1, des1 = auxiliar.ejercicio1cSift(im1)
-    kp2, des2 = auxiliar.ejercicio1cSift(im2)
+    kp1, des1 = auxiliar.getKpAndDescriptors(im1)
+    kp2, des2 = auxiliar.getKpAndDescriptors(im2)
 
     # Cogemos los matchers que van en dirección a la imagen central im2
     # Esto se realiza de esta forma para evitar acumulación de errores

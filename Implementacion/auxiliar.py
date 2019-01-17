@@ -32,7 +32,7 @@ def getDescriptors(im, keypoints, sift):
 
 # Función que dada una imagen hace la detección de keypoints con detect de SIFT
 # y de forma separada calcula los descriptores con compute (llamando a getDescriptors)
-def ejercicio1cSift(im):
+def getKpAndDescriptors(im):
 	sift = cv2.xfeatures2d.SIFT_create(1000, 3, 0.08, 8, 1.6)
 	kp = sift.detect(im)
 	des = getDescriptors(im, kp, sift)
@@ -60,14 +60,14 @@ def getMatchesLowe2NN(des1, des2):
 
 
 # Función auxiliar que nos da las listas de keypoints kp1 y kp2 ordenadas
-# según salgan en el matcher. Se considera que kp1 es de la imagen origen
+# por distancia en el matcher. Se considera que kp1 es de la imagen origen
 # mientras que kp2 es de la imagen destino del matcher
 def getOrderedKeypoints(kp1, kp2, matcher):
 	# srcPoints y dstPoints son los vectores finales que devolveremos
 	srcPoints = []
 	dstPoints = []
 
-	for m in matcher:
+	for m in sorted(matcher, key = lambda x: x.distance)[:100]:
 		# Para cada pareja del matcher cogemos el correspondiente keypoint
 		# del origen y el del destino, calculamos sus puntos con .pt y los
 		# añadimos al vector final
