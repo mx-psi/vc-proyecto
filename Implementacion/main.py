@@ -195,13 +195,6 @@ def getHom(origs, dests, orig_raro, dest_raro):
   #return inicial.reshape((3,3))
 
 
-def showHom(im1, im2):
-  """Muestra un mosaico de dos imágenes."""
-  corr   = getCorrespondences(im1, im2)
-  H, err = getHom(corr)
-  # TODO: Mostrar usando funciones de OpenCV
-
-
 def main():
   parser = argparse.ArgumentParser()
   subparsers = parser.add_subparsers(help="Acceso al modo manual", dest="modo")

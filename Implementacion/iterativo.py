@@ -74,9 +74,19 @@ def lm(f, inicial, objetivo, umbral = 1e-4, max_iter = 100):
   norm = np.linalg.norm(epsilon)
 
   while norm > umbral and iters < max_iter:
+    if np.isinf(augment):
+      # No se ha conseguido convergencia. Abortamos
+      break
+
     JT = jacobiana(f, x)
 
-    delta = np.linalg.solve(JT.dot(JT.T) + augment*I, -JT.dot(epsilon)).reshape((9,))
+    try:
+      delta = np.linalg.solve(JT.dot(JT.T) + augment*I, -JT.dot(epsilon)).reshape((9,))
+    except LinAlgError:
+      # Matriz singular. Aumentamos el lambda
+      augment *= 10
+      continue
+
     candidate = x + delta
     cand_norm = np.linalg.norm(f(candidate) - objetivo)
     if cand_norm < norm:
@@ -86,8 +96,7 @@ def lm(f, inicial, objetivo, umbral = 1e-4, max_iter = 100):
       augment /= 10
     else:
       augment *= 10
-      if np.isinf(augment):
-        augment = 0.001
+
     iters += 1
 
   return x, norm
