@@ -195,12 +195,18 @@ def getHom(origs, dests, orig_raro, dest_raro):
   #inicial = inicialHom(origs, dests).reshape((9,)) # Valor inicial dado por DLT
   inicial, mask = cv2.findHomography(orig_raro, dest_raro, cv2.RANSAC, ransacReprojThreshold=1)
   inicial = inicial.reshape((9,))
-  h, err = iterativo.lm(f, inicial, 0)
+  inicial[0] += 3
+  inicial[2] += 1
+  inicial[5] -= 1
+  #h, err = iterativo.lm(f, inicial, 0)
   #sol = optimize.root(f, inicial, method='lm')
-  #sol = optimize.minimize(f, inicial, method='Powell', options = {'maxfev':1000})
+  sol = optimize.minimize(f, inicial, method='Powell', options = {'maxfev':1000})
+  print("ERROR FINAL")
+  print(f(sol.x))
 
-  print(sol.x)
+  #print(sol.x)
   return sol.x.reshape((3,3))
+  #return inicial.reshape((3,3))
 
 
 def showHom(im1, im2):
@@ -242,7 +248,7 @@ def main():
     #(s_x, s_y) es el tamaño final de nuestro canvas
     # Estos valores se han cogido así porque son los que van bien con las imágenes
     # de yosemite
-    s_x = 1400
+    s_x = 1200
     s_y = 600
     # Se crea el canvas final de tamaño s_x x s_y con tres bandas y uint8 por elemento
     canvas_final = np.zeros((s_x,s_y,3), np.uint8)
@@ -284,7 +290,16 @@ def main():
     # El resto de borderMode se ponen a TRANSPARENT para no pisar el resto de imágenes
     canvas_final2 = cv2.warpPerspective(im1,  h_canvas.dot(h1), (s_x, s_y), canvas_final, borderMode = cv2.BORDER_CONSTANT)
     canvas_final2 = cv2.warpPerspective(im2, h_canvas, (s_x, s_y), canvas_final2, borderMode = cv2.BORDER_TRANSPARENT)
-    ChecaP2.pintaI(canvas_final2, "prueba")
+
+    imgOrdSrc = ordSrcMod.copy()
+    for i in range(len(ordSrcMod)):
+        imgSrc3 = h_canvas.dot(h1).dot([ordSrcMod[i][0], ordSrcMod[i][1],1])
+        imgOrdSrc[i] = [imgSrc3[0]/imgSrc3[2], imgSrc3[1]/imgSrc3[2]]
+        imgOrdDst3 = h_canvas.dot([ordDstMod[i][0], ordDstMod[i][1], 1])
+        cv2.line(canvas_final2, (int(imgOrdSrc[i][0]), int(imgOrdSrc[i][1])), (int(imgOrdDst3[0]/imgOrdDst3[2]),int(imgOrdDst3[1]/imgOrdDst3[2])), (0,0,255), 2)
+    p = ChecaP2.pintaI(canvas_final2, "prueba")
+    cv2.imwrite("./resultados/matches1000.png", p)
 
 if __name__ == "__main__":
-  cProfile.run("main()")
+  #cProfile.run("main()")
+  main()
