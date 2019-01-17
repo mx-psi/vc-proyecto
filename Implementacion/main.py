@@ -8,7 +8,7 @@ import math
 import numpy as np
 import cv2
 import iterativo
-import ChecaP2
+import auxiliar
 from scipy import optimize
 import cProfile # TODO eliminar
 
@@ -180,13 +180,13 @@ def getHom(origs, dests, orig_raro, dest_raro):
   f = lambda h: error_sampson(origs, dests, h) # Minimiza error de Sampson
 
   #inicial = inicialHom(origs, dests).reshape((9,)) # Valor inicial dado por DLT
-  inicial, mask = cv2.findHomography(orig_raro, dest_raro, cv2.RANSAC, ransacReprojThreshold=1)
-  inicial = inicial.reshape((9,))
-  #h, err = iterativo.lm(f, inicial, 0)
-  sol = optimize.minimize(f, inicial, method='Powell', options = {'maxfev':1000})
+  #inicial, mask = cv2.findHomography(orig_raro, dest_raro, cv2.RANSAC, ransacReprojThreshold=1)
+  #inicial = inicial.reshape((9,))
+  inicial = inicialHom(origs, dests).reshape((9,))
+  h, err = iterativo.lm(f, inicial, 0)
+  #sol = optimize.minimize(f, inicial, method='Powell', options = {'maxfev':1000})
 
-  print(sol.x)
-  return sol.x.reshape((3,3))
+  return h.reshape((3,3))
 
 
 def showHom(im1, im2):
@@ -209,22 +209,22 @@ def main():
     # TODO: Cargar imágenes
   else:
     print("Modo de ejemplo")
-    im1 = ChecaP2.lee_imagen("./imagenes/yosemite1.jpg",1)
-    im2 = ChecaP2.lee_imagen("./imagenes/yosemite2.jpg",1)
+    im1 = auxiliar.lee_imagen("./imagenes/yosemite1.jpg",1)
+    im2 = auxiliar.lee_imagen("./imagenes/yosemite2.jpg",1)
 
     # Cogemos los descriptores de las tres imágenes y sus keypoints
-    kp1, des1 = ChecaP2.ejercicio1cSift(im1)
-    kp2, des2 = ChecaP2.ejercicio1cSift(im2)
+    kp1, des1 = auxiliar.ejercicio1cSift(im1)
+    kp2, des2 = auxiliar.ejercicio1cSift(im2)
 
     # Cogemos los matchers que van en dirección a la imagen central im2
     # Esto se realiza de esta forma para evitar acumulación de errores
     # Los matchers los cogemos con Lowe2nn que era el que tenía más calidad del
     # ejercicio 2
-    matcher12 = ChecaP2.getMatchesLowe2NN(des1, des2)
+    matcher12 = auxiliar.getMatchesLowe2NN(des1, des2)
 
     # Recogemos las listas de keypoints de cada matcher ordenadas según las
     # correspondencias
-    orderSrcKp1, orderDstKp12 = ChecaP2.getOrderedKeypoints(kp1, kp2, matcher12)
+    orderSrcKp1, orderDstKp12 = auxiliar.getOrderedKeypoints(kp1, kp2, matcher12)
     #(s_x, s_y) es el tamaño final de nuestro canvas
     # Estos valores se han cogido así porque son los que van bien con las imágenes
     # de yosemite
@@ -270,7 +270,8 @@ def main():
     # El resto de borderMode se ponen a TRANSPARENT para no pisar el resto de imágenes
     canvas_final2 = cv2.warpPerspective(im1,  h_canvas.dot(h1), (s_x, s_y), canvas_final, borderMode = cv2.BORDER_CONSTANT)
     canvas_final2 = cv2.warpPerspective(im2, h_canvas, (s_x, s_y), canvas_final2, borderMode = cv2.BORDER_TRANSPARENT)
-    ChecaP2.pintaI(canvas_final2, "prueba")
+    auxiliar.pintaI(canvas_final2, "prueba")
 
 if __name__ == "__main__":
-  cProfile.run("main()")
+  #cProfile.run("main()")
+  main()
