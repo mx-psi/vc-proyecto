@@ -177,22 +177,13 @@ def getHom(origs, dests, orig_raro, dest_raro):
   """
 
   f = lambda h: error_sampson(origs, dests, h) # Minimiza error de Sampson
+  inicial = inicialHom(origs, dests).reshape((9,)) # Valor inicial dado por DLT
+  h, err = iterativo.lm(f, inicial, 0)
 
-  #inicial = inicialHom(origs, dests).reshape((9,)) # Valor inicial dado por DLT
-  inicial, mask = cv2.findHomography(orig_raro, dest_raro, cv2.RANSAC, ransacReprojThreshold=1)
-  inicial = inicial.reshape((9,))
-  inicial[0] += 3
-  inicial[2] += 1
-  inicial[5] -= 1
-  #h, err = iterativo.lm(f, inicial, 0)
-  #sol = optimize.root(f, inicial, method='lm')
-  sol = optimize.minimize(f, inicial, method='Powell', options = {'maxfev':1000})
   print("ERROR FINAL")
-  print(f(sol.x))
+  print(err)
 
-  #return h.reshape((3,3))
-  return sol.x.reshape((3,3))
-  #return inicial.reshape((3,3))
+  return h.reshape((3,3))
 
 
 def main():

@@ -45,7 +45,7 @@ def jacobiana(f, x, delta = None):
   return np.vstack(ders)
 
 
-def lm(f, inicial, objetivo, umbral = 1e-4, max_iter = 100):
+def lm(f, inicial, objetivo, umbral = 1e-4, max_iter = 150):
   """Implementa el algoritmo de Levenberg-Marquadt.
    Dada f, calcula x tal que |f(x)-objetivo| < umbral en un entorno de inicial o
    devuelve la mejor aproximación encontrada si no ha encontrado tal x en max_iter iteraciones.
@@ -83,7 +83,7 @@ def lm(f, inicial, objetivo, umbral = 1e-4, max_iter = 100):
       delta = np.linalg.solve(JT.dot(JT.T) + augment*I, -JT.dot(epsilon)).reshape((9,))
     except np.linalg.linalg.LinAlgError:
       # Matriz singular. Aumentamos el lambda
-      print("Matriz singular")
+      print("Matriz singular") # TODO: Eliminar
       augment *= 10
       continue
 
