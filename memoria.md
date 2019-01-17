@@ -1,12 +1,16 @@
+\newpage
+
 # Introducción
 
-El problema que se intentará exponer a lo largo de este proyecto es el de estimar una homografía dado un conjunto de correspondencias de puntos 2D usando la función de error de Sampson. Si bien una homografía queda determinada solo por cuatro puntos y sus cuatro imágenes, cuando tenemos un número mayor de puntos y no hay una homografía que nos dé con exactitud estas correspondencias acabamos con cierto margen para elegir cómo escogemos la homografía que usaremos al final. Uno de los objetivos fundamentales es disminuir el error que obtenemos al hacer las imágenes con la homografía de nuestros puntos originales frente a dónde deberían acabar según sus correspondencias. Esta idea es puramente geométrica, ya que lo único que tenemos que realizar es distancias entre las imágenes de la homografía y los datos de destino. Esto es importante, ya que es de esta idea de donde sale el estudio de estimar homografías a partir de una función de coste basada en una distancia geométrica, que se explica con detalle en [@hartley2003multiple] y sobre el que basaremos la notación a lo largo del proyecto.
+En este proyecto desarrollamos el problema de la estimación de una homografía dado un conjunto de correspondencias usando la función de error de Sampson. Una homografía queda determinada solo por cuatro puntos no alineados y sus cuatro imágenes, sin embargo, cuando tenemos incertidumbre respecto a las correspondencias podemos tener más de 4 correspondencias para las que no existirá una homografía que las refleje de forma exacta.
 
-Por lo que, al final, vamos a intentar explorar la estimación de una homografía con una función de coste muy concreta. Esta función de coste es, a su vez, una estimación de la distancia geométrica de la que hablábamos antes, de la cual no podemos obtener una expresión rápida de calcular, pero sí podemos aproximarla. El error de Sampson nos permite justo esto, encontrar una aproximación eficiente pero que siga teniendo relación con lo que queremos minimizar, que es el error geométrico que producimos al realizar la homografía. Todo esto se explica con detalle en la sección del error de Sampson.
+Para elegir qué homografía usaremos en estos casos una de las técnicas fundamentales consiste en disminuir el error que obtenemos al comparar las imágenes esperadas de los puntos con las que nos da la homografía. El error conceptualmente más simple es el error geométrico, ya que lo único que tenemos que hacer es comparar las distancias entre las imágenes de la homografía y los datos de destino. De esta idea es de donde sale el estudio de la estimación de homografías a partir de una función de coste basada en una distancia geométrica, que se explica con detalle en [@hartley2003multiple] y sobre el que basaremos la notación a lo largo del proyecto.
 
-Las posibles aplicaciones de este algoritmo son las de mejorar el proceso de estimación de homografías que ya habíamos estudiado. Por un lado, esto añade calidad a la homografía resultante, ya que al reducir el error geométrico de los puntos con sus imágenes por la homografía, obtenemos un resultado visualmente mejor. Por otro, añade consistencia en los casos en los que las correspondencias tengan más ruido, permitiendo resolver una gama más amplia de problemas en los que antes el algoritmo no tenía la suficiente calidad como para ser aceptable. Por último, cabe destacar que las herramientas necesarias para resolver un problema tan abstracto como es el de estimar una homografía bajo ciertas restricciones son importantes por sí mismas, por la utilidad que puedan dar en otros ámbitos y problemas.
+En este trabajo vamos a intentar explorar la estimación de una homografía con una función de coste muy concreta, el *error de Sampson*. Esta función de coste es una estimación de la distancia geométrica de la que hablábamos antes, cuya expresión es compleja para su optimización, pero que puede aproximarse de forma efectiva. El error de Sampson nos permite justo esto, encontrar una aproximación eficiente del error geométrico que producimos al realizar la homografía. Desarrollamos esta idea en la sección [Error de Sampson].
 
-El trabajo se puede dividir en el código que viene adjunto, en el que implementamos todos estos algoritmos con ejemplos de uso para que sean más fáciles de entender, y esta memoria, en la que intentamos explicar cómo funciona cada detalle del algoritmo en cuestión. En las siguientes secciones veremos: una introducción al problema a resolver; la descripción del Error de Sampson junto a los cálculos y expresiones que permiten calcularlo, junto a por qué es importante; y por último la explicación con detalle del algoritmo final, que se puede dividir en estimación inicial y el paso iterativo para ir minimizando el error de Sampson. Para la estimación hemos querido hacerla con el algoritmo Direct Linear Transform (DLT) y para el método iterativo hemos escogido el algoritmo de Levenberg-Marquadt. Ambos se explican con detalle en la última sección.
+Las posibles aplicaciones de este algoritmo son las de mejorar el proceso de estimación de homografías que estudiamos en la segunda práctica. Por un lado, esto añade calidad a la homografía resultante, ya que al reducir el error geométrico de los puntos con sus imágenes por la homografía, obtenemos un resultado visualmente mejor. Por otro, añade consistencia en los casos en los que las correspondencias tengan más ruido, permitiendo resolver una gama más amplia de problemas en los que antes el algoritmo no tenía la suficiente calidad como para ser aceptable. Por último, cabe destacar que las herramientas necesarias para resolver un problema tan abstracto como es el de estimar una homografía bajo ciertas restricciones son importantes por sí mismas, por la utilidad que puedan dar en otros ámbitos y problemas.
+
+El trabajo se divide en el código adjunto en el que implementamos todos estos algoritmos con ejemplos de uso para que sean más fáciles de entender y cuyo funcionamiento se explica en el [Apéndice: Funcionamiento del código adjunto], y en esta memoria, en la que explicamos el fundamento teórico de los mismos. En las siguientes secciones veremos: una introducción al problema a resolver; la descripción y obtención del Error de Sampson junto a su importancia y, por último, la explicación del algoritmo final, que se puede dividir en estimación inicial y el paso iterativo para ir minimizando el error de Sampson. La estimación inicial se hace con el algoritmo *Direct Linear Transform* (DLT) y el método iterativo usa el algoritmo de Levenberg-Marquadt.
 
 # El problema de estimación de homografías
 
@@ -15,20 +19,23 @@ Dado un conjunto de correspondencias $\{\mathbf{x}_i \leftrightarrow \mathbf{x}'
 hallar una homografía dada por su expresión matricial $H \in \mathcal{M}_{3 \times 3}(\mathbb{R})$ que minimice el error entre $H\mathbf{x}_i$ y $\mathbf{x}'_i$.
 :::
 
-Como utilizamos coordenadas homogéneas, el caso exacto se dará cuando $H\mathbf{x}_i$ y $\mathbf{x}'_i$ sean proporcionales, que podemos expresar como $\mathbf{x}'_i \times H\mathbf{x}_i = \mathbf{0}$.
-Diremos que $\mathbf{x}_i \leftrightarrow \mathbf{x}'_i$ es una *correspondencia exacta* para $H$.
+Como utilizamos coordenadas homogéneas, el caso exacto se dará cuando $H\mathbf{x}_i$ y $\mathbf{x}'_i$ sean proporcionales, ya que la expresión matricial de una homografía está definida salvo multiplicación por constante.
+
+Podemos expresar esta relación como $\mathbf{x}'_i \times H\mathbf{x}_i = \mathbf{0}$, sabiendo que el producto vectorial de vectores proporcionales es nulo. En este caso diremos que $\mathbf{x}_i \leftrightarrow \mathbf{x}'_i$ es una *correspondencia exacta* para $H$.
 
 Además, en lo sucesivo utilizaremos $h$ para referirnos a un vector de $\mathbb{R}^9$ que tenga las componentes de $H$ escritas como vector.
 
-- TODO: Describir el cálculo en el caso exacto para 4 correspondencias.
-
-La expresión matricial por bloques del sistema de ecuaciones que define una correspondencia, notando $\mathbf{x}_i = (x_i, y_i, w_i)$, $\mathbf{x}'_i = (x'_i, y'_i, w'_i)$ y $H = (h^1 h^2 h^3)^T$ por filas es ([@hartley2003multiple 4.3 p.89])
-$$A_iH =
+Cada correspondencia impone tres ecuaciones sobre las componentes de la homografía, de las cuales dos son independientes. En concreto, la expresión matricial por bloques del sistema de ecuaciones que define una correspondencia, notando $\mathbf{x}_i = (x_i, y_i, w_i)$, $\mathbf{x}'_i = (x'_i, y'_i, w'_i)$ y $H = (h^1 h^2 h^3)^T$ por filas es ([@hartley2003multiple 4.3 p.89])
+$$A(\mathbf{X})h =  A_ih =
 \left(\begin{matrix}\mathbf{0}^T & -w'_i\mathbf{x}_i^T & y'_i\mathbf{x}_i^T \\
 w'_i\mathbf{x}_i^T  & \mathbf{0}^T  & -x'_i\mathbf{x}_i^T \end{matrix}\right)
 \left(\begin{matrix}h^1 \\ h^2 \\ h^3\end{matrix}\right)$$
 
-Fijada la homografía podemos definir a partir de esta matriz la función de *error algebraico* $\mathcal{C}_H(\mathbf{X}) = A(\mathbf{X})h$.
+Si tenemos 4 correspondencias podemos entonces formar a partir de las matrices $A_i \in \mathcal{M}_{2\times 9}(\mathbb{R})$ una matriz $A \in \mathcal{M}_{8\times 9}(\mathbb{R})$ que, junto con una condición extra como $\lVert h\rVert = 1$ nos da un sistema de ecuaciones que nos permite obtener una homografía para la cual las 4 correspondencias sean exactas.
+
+Esta resolución sin embargo no es útil en la práctica, ya que normalmente las correspondencias tienen ruido y *outliers*, por lo que la homografía obtenida no será útil en la práctica. Veremos un método sencillo para obtener a partir de $N$ correspondencias, una homografía usando el método DLT que nos será útil como estimación inicial para posteriormente refinar con el error de Sampson.
+
+Fijada una homografía, para definir el error de Sampson  Fijada la homografía podemos definir a partir de esta matriz la función de *error algebraico* para una correspondencia $\mathbf{X}$, $\mathcal{C}_H(\mathbf{X}) = A(\mathbf{X})h$.
 
 # Error de Sampson
 ## Descripción y derivación
@@ -37,7 +44,7 @@ El error de Sampson es una función de coste aplicable a problemas generales de 
 En el caso de la estimación de homografías aproxima el *error geométrico*, esto es, a la distancia euclídea entre $H\mathbf{x}_i$ y $\mathbf{x}'_i$, dando mejores resultados que reducir en norma el error algebraico.
 A continuación hacemos un breve resumen de la derivación teórica del error de Sampson para una sola correspondencia siguiendo el desarrollo y la notación de [@hartley2003multiple].
 
-La idea del error de Sampson es: dada una correspondencia expresada en coordenadas inhomogéneas como $\mathbf{X} = (x,y,x',y')$ estimar la correspondencia exacta para $H$ más cercana mediante una aproximación lineal de la función de error algebraico.
+La idea principal detrás del error de Sampson es: dada una correspondencia expresada en coordenadas inhomogéneas como $\mathbf{X} = (x,y,x',y')$ estimar la correspondencia exacta para $H$ más cercana mediante una aproximación lineal de la función de error algebraico.
 
 Aproximamos la función de error algebraico utilizando un desarrollo de Taylor de primer orden:
 $$\mathcal{C}_H(\mathbf{X} + \mathbf{\delta_X}) = \mathcal{C}_H(\mathbf{X}) + \frac{\partial \mathcal{C}_H}{\partial \mathbf{X}}\mathbf{\delta_X}, \text{ donde notaremos } J \overset{\text{def}}{=} \frac{\partial \mathcal{C}_H}{\partial \mathbf{X}}, \mathbf{\epsilon} \overset{\text{def}}{=}  \mathcal{C}_H(\mathbf{X}).$$
@@ -113,21 +120,25 @@ Salida
 7. Devolver la composición de las matrices de transformación con la homografía estimada $T'^{-1}\overset{\sim}{H}T$.
 :::
 
+Este algoritmo nos da una buena aproximación inicial.
+La normalización nos permite evitar errores derivados de la precisión limitada en el cálculo y mejorar los resultados.
+El cálculo del vector singular es el algoritmo utilizado normalmente para la resolución de sistemas de ecuaciones lineales en los que hay más ecuaciones que incógnitas (asumimos por tanto que $N >4$).
 
 ## Método iterativo
 
-El método iterativo que se ha usado es, como ya se ha mencionado previamente, el algoritmo de Levenberg-Marquadt. Este algoritmo es simplemente una variación de Gauss-Newton en la que se cambia la ecuación de iteración. La original es:
+El método iterativo que se ha usado es, como ya se ha mencionado previamente, el algoritmo de Levenberg-Marquadt. Este algoritmo es una variación de Gauss-Newton en la que se cambia la ecuación de iteración, que, en función de la convergencia del algoritmo oscila entre el método de Gauss-Newton y el método de gradiente descendente. 
 
-$$J^TJ\Delta = -J^T\epsilon$$
-
-Mientras que la que se utiliza en el método iterativo de Levenberg-Marquadt es:
-
-$$(J^TJ+\lambda I)\Delta = -J^T\epsilon$$
-
-Donde $\lambda$ es un término que va cambiando por iteración, aumenta si no conseguimos disminuir el error y disminuye si sí lo hacemos. Esta ecuación se llama la ecuación normal aumentada.
+La ecuación del método de Gauss Newton es
+$$J^TJ\Delta = -J^T\epsilon,$$
+mientras que la que se utiliza en el método iterativo de Levenberg-Marquadt es
+$$(J^TJ+\lambda I)\Delta = -J^T\epsilon,$$
+donde $\lambda$ es un término que va cambiando por iteración: aumenta si no conseguimos disminuir el error y disminuye si sí lo hacemos. Esta ecuación se llama la ecuación normal aumentada.
 
 
 <!-- TODO: Justificación de qué hace exactamente lambda, y demostración de que apunta a la dirección buena siempre -->
 
 
 <!-- TODO: Especificación del algoritmo -->
+
+
+# Apéndice: Funcionamiento del código adjunto {.unnumbered}
