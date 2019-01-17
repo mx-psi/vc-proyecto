@@ -35,7 +35,7 @@ def jacobiana(f, x, delta = None):
   # Calcula tamaño de delta
   # en función de fórmula dada en Multiple View in Geometry (Apéndice A6.2)
   if delta is None:
-    delta = np.maximum(1e-6, 1e-4*x)
+    delta = np.maximum(1e-6, 1e-4*np.abs(x))
 
   N = x.size
   fx = f(x)
@@ -76,14 +76,14 @@ def lm(f, inicial, objetivo, umbral = 1e-4, max_iter = 1000):
 
   while norm > umbral and iters < max_iter:
     J = jacobiana(f, x)
-    print(J)
-    print(J.dot(J.T) + augment*I)
-    delta = np.linalg.solve(J.dot(J.T) + augment*I, -J.dot(epsilon))
 
+    delta = np.linalg.solve(J.dot(J.T) + augment*I, -J.dot(epsilon))
+    delta = [delta[0][i] for i in range(len(delta[0]))]
     candidate = x + delta
     cand_norm = np.linalg.norm(f(candidate) - objetivo)
     if cand_norm < norm:
       x = candidate
+      epsilon = f(x)-objetivo
       norm = cand_norm
       augment /= 10
     else:

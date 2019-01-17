@@ -86,8 +86,9 @@ def error_sampson_corr(orig, dest, h):
 
   epsilon = C_Hx(orig, dest, h)
   lamb = np.linalg.solve(JJT(orig, dest, h), -epsilon)
+  error_samps = np.transpose(epsilon).dot(-lamb)
 
-  return np.transpose(epsilon).dot(-lamb)
+  return error_samps[0][0]
 
 
 def error_sampson(origs, dests,h):
@@ -99,8 +100,16 @@ def error_sampson(origs, dests,h):
   - El error de Sampson para el conjunto de correspondencias"""
 
   err = 0
+  out0=0
+  out1=0
   for i in range(len(origs)):
-    err += error_sampson_corr(origs[i], dests[i], h)
+    err_it = error_sampson_corr(origs[i], dests[i], h)
+    err += err_it
+    if(err_it > 100):
+      out0+=1
+    else:
+      out1+=1
+
   return err
 
 
@@ -171,7 +180,7 @@ def inicialHom(origs, dests):
   return T_dest.dot(H).dot(T_orig)
 
 
-def getHom(origs, dests):
+def getHom(origs, dests, orig_raro, dest_raro):
   """Obtiene una homografía a partir de una lista de correspondencias.
   Argumentos posicionales:
   - corr: Lista de pares de puntos en coordenadas inhomogéneas
@@ -181,9 +190,11 @@ def getHom(origs, dests):
   """
 
   f = lambda h: error_sampson(origs, dests, h) # Minimiza error de Sampson
-  inicial = inicialHom(origs, dests).reshape((9,)) # Valor inicial dado por DLT
-  #h, err = iterativo.lm(f, inicial, 0)
-  sol = optimize.root(f, inicial, method='lm')
+  #inicial = inicialHom(origs, dests).reshape((9,)) # Valor inicial dado por DLT
+  inicial, mask = cv2.findHomography(orig_raro, dest_raro, cv2.RANSAC, ransacReprojThreshold=1)
+  inicial = inicial.reshape((9,))
+  h, err = iterativo.lm(f, inicial, 0)
+  #sol = optimize.root(f, inicial, method='lm')
   print(sol.x)
   return h.reshape((3,3)), err
 
@@ -253,7 +264,7 @@ if __name__ == "__main__":
     # Sustituimos encontrar la homografía y lo hacemos con getHom en lugar de findHomography
     ordSrcMod = np.array([orderSrcKp1[i][0] for i in range(len(orderSrcKp1))])
     ordDstMod = np.array([orderDstKp12[i][0] for i in range(len(orderDstKp12))])
-    h1 = getHom(ordSrcMod, ordDstMod)
+    h1 = getHom(ordSrcMod, ordDstMod, orderSrcKp1, orderDstKp12)
     # Se crea la imagen final haciendo llamadas a warpPerspective de cada imagen
     # con sus transformaciones correspondientes
     # Mientras que la central solo es la homografía que hemos hallado antes,
