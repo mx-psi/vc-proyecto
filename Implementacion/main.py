@@ -10,6 +10,7 @@ import cv2
 import iterativo
 import ChecaP2
 from scipy import optimize
+import cProfile # TODO eliminar
 
 def C_Hx(orig, dest, h):
   """Calcula C_H(X) donde X = (orig, dest) y H es la homografía asociada al vector h.
@@ -35,7 +36,6 @@ def C_Hx(orig, dest, h):
   m = np.vstack((first_row, second_row))
 
   h_t = np.vstack(h)
-
   return m.dot(h_t)
 
 def JJT(orig, dest, h):
@@ -83,7 +83,8 @@ def error_sampson_corr(orig, dest, h):
   - h: Matriz de homografía redimensionada como vector de R⁹
   Devuelve:
   - El error de Sampson para la correspondencia"""
-
+  if h.shape == (1,9):
+    h = h.reshape((9,))
   epsilon = C_Hx(orig, dest, h)
   lamb = np.linalg.solve(JJT(orig, dest, h), -epsilon)
   error_samps = np.transpose(epsilon).dot(-lamb)
@@ -91,7 +92,7 @@ def error_sampson_corr(orig, dest, h):
   return error_samps[0][0]
 
 
-def error_sampson(origs, dests,h):
+def error_sampson(origs, dests, h):
   """Calcula el error de Sampson para un conjunto de correspondencias.
   Argumentos posicionales:
   - corr: Iterable con pares de puntos origen, destino en coordenadas TODO
@@ -190,13 +191,19 @@ def getHom(origs, dests, orig_raro, dest_raro):
   """
 
   f = lambda h: error_sampson(origs, dests, h) # Minimiza error de Sampson
+<<<<<<< HEAD
   #inicial = inicialHom(origs, dests).reshape((9,)) # Valor inicial dado por DLT
   inicial, mask = cv2.findHomography(orig_raro, dest_raro, cv2.RANSAC, ransacReprojThreshold=1)
   inicial = inicial.reshape((9,))
   h, err = iterativo.lm(f, inicial, 0)
   #sol = optimize.root(f, inicial, method='lm')
+=======
+  inicial = inicialHom(origs, dests).reshape((9,)) # Valor inicial dado por DLT
+  #h, err = iterativo.lm(f, inicial, 0)
+  sol = optimize.minimize(f, inicial, method='Powell', options = {'maxfev':1000})
+>>>>>>> master
   print(sol.x)
-  return h.reshape((3,3)), err
+  return sol.x.reshape((3,3))
 
 
 def showHom(im1, im2):
@@ -206,7 +213,7 @@ def showHom(im1, im2):
   # TODO: Mostrar usando funciones de OpenCV
 
 
-if __name__ == "__main__":
+def main():
   parser = argparse.ArgumentParser()
   subparsers = parser.add_subparsers(help="Acceso al modo manual", dest="modo")
   manual = subparsers.add_parser('manual')
@@ -219,7 +226,6 @@ if __name__ == "__main__":
     # TODO: Cargar imágenes
   else:
     print("Modo de ejemplo")
-    puntos = np.random.rand(4,2)
     im1 = ChecaP2.lee_imagen("./imagenes/yosemite1.jpg",1)
     im2 = ChecaP2.lee_imagen("./imagenes/yosemite2.jpg",1)
 
@@ -264,7 +270,14 @@ if __name__ == "__main__":
     # Sustituimos encontrar la homografía y lo hacemos con getHom en lugar de findHomography
     ordSrcMod = np.array([orderSrcKp1[i][0] for i in range(len(orderSrcKp1))])
     ordDstMod = np.array([orderDstKp12[i][0] for i in range(len(orderDstKp12))])
+<<<<<<< HEAD
     h1 = getHom(ordSrcMod, ordDstMod, orderSrcKp1, orderDstKp12)
+=======
+    h1 = getHom(ordSrcMod, ordDstMod)
+    #h1 = inicialHom(ordSrcMod, ordDstMod)
+    #h1 = cv2.findHomography(ordSrcMod, ordDstMod, cv2.RANSAC, 1)[0]
+
+>>>>>>> master
     # Se crea la imagen final haciendo llamadas a warpPerspective de cada imagen
     # con sus transformaciones correspondientes
     # Mientras que la central solo es la homografía que hemos hallado antes,
@@ -279,13 +292,5 @@ if __name__ == "__main__":
     canvas_final2 = cv2.warpPerspective(im2, h_canvas, (s_x, s_y), canvas_final2, borderMode = cv2.BORDER_TRANSPARENT)
     ChecaP2.pintaI(canvas_final2, "prueba")
 
-    norm, T = normaliza(puntos, inv = True)
-    centroide = np.mean(norm, axis = 0)
-    distancia_media = np.mean(np.linalg.norm(norm, axis = 1))
-    print(centroide)
-    print(distancia_media)
-
-    corr = np.array([[p,p] for p in puntos], float)
-    H = inicialHom(puntos, puntos)
-    print(H/H[2,2])
-    # TODO: Elegir imágenes por defecto
+if __name__ == "__main__":
+  cProfile.run("main()")
