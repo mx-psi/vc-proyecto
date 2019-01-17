@@ -10,7 +10,6 @@ import cv2
 import iterativo
 import auxiliar
 from scipy import optimize
-import cProfile # TODO eliminar
 
 def Ai(orig, dest):
   """Calcula ecuaciones que impone una correspondencia
@@ -51,8 +50,8 @@ def C_Hx(orig, dest, h):
 def JJT(orig, dest, h):
   """Función auxiliar para el cálculo del error de Sampson.
   Argumentos posicionales:
-  - orig: Punto de origen en coordenadas homogéneas
-  - dest: Punto de destino en coordenadas homogéneas
+  - orig: Punto de origen en coordenadas inhomogéneas
+  - dest: Punto de destino en coordenadas inhomogéneas
   - h: Matriz de homografía redimensionada como vector de R⁹
 
   Devuelve:
@@ -70,8 +69,8 @@ def JJT(orig, dest, h):
 def error_sampson_corr(orig, dest, h):
   """Calcula el error de Sampson para una correspondencia.
   Argumentos posicionales:
-  - orig: Punto de origen en coordenadas homogéneas
-  - dest: Punto de destino en coordenadas homogéneas
+  - orig: Punto de origen en coordenadas inhomogéneas
+  - dest: Punto de destino en coordenadas inhomogéneas
   - h: Matriz de homografía redimensionada como vector de R⁹
   Devuelve:
   - El error de Sampson para la correspondencia"""
@@ -86,7 +85,7 @@ def error_sampson_corr(orig, dest, h):
 def error_sampson(origs, dests, h):
   """Calcula el error de Sampson para un conjunto de correspondencias.
   Argumentos posicionales:
-  - corr: Iterable con pares de puntos origen, destino en coordenadas TODO
+  - corr: Iterable con pares de puntos origen, destino en coordenadas inhomogéneas
   - h: Matriz de homografía redimensionada como vector de R⁹
   Devuelve:
   - El error de Sampson para el conjunto de correspondencias"""
@@ -178,23 +177,11 @@ def getHom(origs, dests, orig_raro, dest_raro):
   """
 
   f = lambda h: error_sampson(origs, dests, h) # Minimiza error de Sampson
-
-  #inicial = inicialHom(origs, dests).reshape((9,)) # Valor inicial dado por DLT
-  #inicial, mask = cv2.findHomography(orig_raro, dest_raro, cv2.RANSAC, ransacReprojThreshold=1)
-  #inicial = inicial.reshape((9,))
-  inicial = inicialHom(origs, dests).reshape((9,))
+  inicial = inicialHom(origs, dests).reshape((9,)) # Valor inicial dado por DLT
   h, err = iterativo.lm(f, inicial, 0)
   #sol = optimize.minimize(f, inicial, method='Powell', options = {'maxfev':1000})
 
   return h.reshape((3,3))
-
-
-def showHom(im1, im2):
-  """Muestra un mosaico de dos imágenes."""
-  corr   = getCorrespondences(im1, im2)
-  H, err = getHom(corr)
-  # TODO: Mostrar usando funciones de OpenCV
-
 
 def main():
   parser = argparse.ArgumentParser()
@@ -273,5 +260,4 @@ def main():
     auxiliar.pintaI(canvas_final2, "prueba")
 
 if __name__ == "__main__":
-  #cProfile.run("main()")
   main()
