@@ -36,7 +36,6 @@ def jacobiana(f, x, delta = None):
   # en función de fórmula dada en Multiple View in Geometry (Apéndice A6.2)
   if delta is None:
     delta = np.maximum(1e-6, 1e-4*np.abs(x))
-    print(delta)
   N = x.size
   fx = f(x)
 
@@ -82,8 +81,9 @@ def lm(f, inicial, objetivo, umbral = 1e-4, max_iter = 100):
 
     try:
       delta = np.linalg.solve(JT.dot(JT.T) + augment*I, -JT.dot(epsilon)).reshape((9,))
-    except LinAlgError:
+    except np.linalg.linalg.LinAlgError:
       # Matriz singular. Aumentamos el lambda
+      print("Matriz singular")
       augment *= 10
       continue
 
