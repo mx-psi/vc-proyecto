@@ -15,13 +15,13 @@ PDFFLAGS:=-H src/latex.sty
 
 .PHONY: all clean
 
-all: $(OUTPDF)
+all: proyecto.zip
 
 $(OUTPDF): $(SRCS) $(DEPSPDF)
 	$(PANDOC) $(PFLAGS) $(PDFFLAGS) src/header.md $(SRCS) src/footer.md -o $@
 
-propuesta.pdf: propuesta.md
-	pandoc $^ -o $@
+proyecto.zip: $(OUTPDF) Implementacion/main.py Implementacion/iterativo.py Implementacion/auxiliar.py
+	zip -9 $@ $^
 
 clean:
-	rm $(OUTPDF)
+	rm $(OUTPDF) proyecto.zip
