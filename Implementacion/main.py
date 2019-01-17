@@ -191,17 +191,14 @@ def getHom(origs, dests, orig_raro, dest_raro):
   """
 
   f = lambda h: error_sampson(origs, dests, h) # Minimiza error de Sampson
-<<<<<<< HEAD
+
   #inicial = inicialHom(origs, dests).reshape((9,)) # Valor inicial dado por DLT
   inicial, mask = cv2.findHomography(orig_raro, dest_raro, cv2.RANSAC, ransacReprojThreshold=1)
   inicial = inicial.reshape((9,))
   h, err = iterativo.lm(f, inicial, 0)
   #sol = optimize.root(f, inicial, method='lm')
-=======
-  inicial = inicialHom(origs, dests).reshape((9,)) # Valor inicial dado por DLT
-  #h, err = iterativo.lm(f, inicial, 0)
-  sol = optimize.minimize(f, inicial, method='Powell', options = {'maxfev':1000})
->>>>>>> master
+  #sol = optimize.minimize(f, inicial, method='Powell', options = {'maxfev':1000})
+
   print(sol.x)
   return sol.x.reshape((3,3))
 
@@ -270,14 +267,11 @@ def main():
     # Sustituimos encontrar la homografía y lo hacemos con getHom en lugar de findHomography
     ordSrcMod = np.array([orderSrcKp1[i][0] for i in range(len(orderSrcKp1))])
     ordDstMod = np.array([orderDstKp12[i][0] for i in range(len(orderDstKp12))])
-<<<<<<< HEAD
     h1 = getHom(ordSrcMod, ordDstMod, orderSrcKp1, orderDstKp12)
-=======
-    h1 = getHom(ordSrcMod, ordDstMod)
+    #h1 = getHom(ordSrcMod, ordDstMod)
     #h1 = inicialHom(ordSrcMod, ordDstMod)
     #h1 = cv2.findHomography(ordSrcMod, ordDstMod, cv2.RANSAC, 1)[0]
 
->>>>>>> master
     # Se crea la imagen final haciendo llamadas a warpPerspective de cada imagen
     # con sus transformaciones correspondientes
     # Mientras que la central solo es la homografía que hemos hallado antes,
