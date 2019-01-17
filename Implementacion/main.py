@@ -8,78 +8,69 @@ import math
 import numpy as np
 import cv2
 import iterativo
-import ChecaP2
+import auxiliar
 from scipy import optimize
-import cProfile # TODO eliminar
+
+def Ai(orig, dest):
+  """Calcula ecuaciones que impone una correspondencia
+  sobre las incógnitas de una homografía
+  Argumentos posicionales:
+  - orig: Punto de origen
+  - dest: Punto de destino
+  Devuelve:
+  - Matriz 2x9
+  """
+
+  if dest.size == 2:
+    x, y = dest
+    w = 1
+  else:
+    x, y, w = dest
+
+  if orig.size == 2:
+    orig = np.append(orig,1)
+
+  zeros = np.zeros(3)
+  r1 = np.concatenate((zeros, -w*orig, y*orig))
+  r2 = np.concatenate((w*orig, zeros, -x*orig))
+  return np.vstack((r1,r2))
+
 
 def C_Hx(orig, dest, h):
   """Calcula C_H(X) donde X = (orig, dest) y H es la homografía asociada al vector h.
   Argumentos posicionales:
-  - orig: Punto de origen en coordenadas TODO
-  - dest: Punto de destino en coordenadas TODO
+  - orig: Punto de origen
+  - dest: Punto de destino
   - h: Matriz de homografía redimensionada como vector de R⁹
   Devuelve:
   - Evaluación de C_H(X) con X = (orig, dest)"""
+  return Ai(orig, dest).dot(h)
 
-  if len(dest) == 2:
-      x_i, y_i = dest
-      w_i = 1
-  else:
-      x_i, y_i, w_i = dest
-
-  if len(orig) == 2:
-      orig_mod = np.append(orig,1)
-  else:
-      orig_mod = orig
-  first_row = np.concatenate(([0,0,0], -w_i*orig_mod, y_i*orig_mod), axis=None)
-  second_row = np.concatenate((w_i*orig_mod, [0,0,0], -x_i*orig_mod), axis=None)
-  m = np.vstack((first_row, second_row))
-
-  h_t = np.vstack(h)
-  return m.dot(h_t)
 
 def JJT(orig, dest, h):
   """Función auxiliar para el cálculo del error de Sampson.
   Argumentos posicionales:
-  - orig: Punto de origen en coordenadas TODO
-  - dest: Punto de destino en coordenadas TODO
+  - orig: Punto de origen en coordenadas inhomogéneas
+  - dest: Punto de destino en coordenadas inhomogéneas
   - h: Matriz de homografía redimensionada como vector de R⁹
 
   Devuelve:
   - JJ.T, donde J es la matriz jacobiana de C_H(X)
   """
 
-  orig_e1 = orig.copy()
-  orig_e1[0] = orig_e1[0] + 1
+  JT = iterativo.jacobiana( # Cálculo exacto por ser multilineal
+    lambda X: C_Hx(X[:2], X[2:], h), # Función C_H
+    np.hstack([orig, dest]), # Punto X en la variedad
+    delta = np.ones(4)) # Delta = 1
 
-  orig_e2 = orig.copy()
-  orig_e2[1] += 1
-
-  dest_e3 = dest.copy()
-  dest_e3[0] += 1
-
-  dest_e4 = dest.copy()
-  dest_e4[1] += 1
-
-  original = C_Hx(orig, dest, h)
-  parcial_1 = C_Hx(orig_e1, dest, h) - original
-  parcial_2 = C_Hx(orig_e2, dest, h) - original
-  parcial_3 = C_Hx(orig, dest_e3, h) - original
-  parcial_4 = C_Hx(orig, dest_e4, h) - original
-
-  parcial_1 = parcial_1.dot(np.transpose(parcial_1))
-  parcial_2 = parcial_2.dot(np.transpose(parcial_2))
-  parcial_3 = parcial_3.dot(np.transpose(parcial_3))
-  parcial_4 = parcial_4.dot(np.transpose(parcial_4))
-
-  return (parcial_1 + parcial_2 + parcial_3 + parcial_4)
+  return JT.T.dot(JT)
 
 
 def error_sampson_corr(orig, dest, h):
   """Calcula el error de Sampson para una correspondencia.
   Argumentos posicionales:
-  - orig: Punto de origen en coordenadas TODO
-  - dest: Punto de destino en coordenadas TODO
+  - orig: Punto de origen en coordenadas inhomogéneas
+  - dest: Punto de destino en coordenadas inhomogéneas
   - h: Matriz de homografía redimensionada como vector de R⁹
   Devuelve:
   - El error de Sampson para la correspondencia"""
@@ -88,14 +79,13 @@ def error_sampson_corr(orig, dest, h):
   epsilon = C_Hx(orig, dest, h)
   lamb = np.linalg.solve(JJT(orig, dest, h), -epsilon)
   error_samps = np.transpose(epsilon).dot(-lamb)
-
-  return error_samps[0][0]
+  return error_samps
 
 
 def error_sampson(origs, dests, h):
   """Calcula el error de Sampson para un conjunto de correspondencias.
   Argumentos posicionales:
-  - corr: Iterable con pares de puntos origen, destino en coordenadas TODO
+  - corr: Iterable con pares de puntos origen, destino en coordenadas inhomogéneas
   - h: Matriz de homografía redimensionada como vector de R⁹
   Devuelve:
   - El error de Sampson para el conjunto de correspondencias"""
@@ -117,7 +107,7 @@ def error_sampson(origs, dests, h):
 def normaliza(puntos, inv = False):
   """Normaliza un conjunto de puntos.
   Argumentos posicionales:
-  - puntos: Array np de vectores de dimensión n.
+  - puntos: Array Numpy de forma (N,2)
   Argumentos opcionales:
   - inv: Flag que indica si se devuelve la transformación directa o inversa
   Devuelve:
@@ -164,15 +154,11 @@ def inicialHom(origs, dests):
   A = None
 
   # Para cada correspondencia concatena la matriz Ai
-  for src, dst in zip(orig_n, dest_n):
-    # TODO: Asumo que las correspondencias vienen dadas en coordenadas inhomogéneas
-    src_h = np.append(src, 1)
-    f1 = np.concatenate((v, - src_h, dst[1]*src_h))
-    f2 = np.concatenate((src_h, v, -dst[0]*src_h))
+  for orig, dst in zip(orig_n, dest_n):
     if A is None:
-      A = np.vstack((f1, f2))
+      A = Ai(orig, dst)
     else:
-      A = np.vstack((A, f1, f2))
+      A = np.vstack((A, Ai(orig,dst)))
 
   # Halla SVD
   *_, V = np.linalg.svd(A)
@@ -204,7 +190,7 @@ def getHom(origs, dests, orig_raro, dest_raro):
   print("ERROR FINAL")
   print(f(sol.x))
 
-  #print(sol.x)
+  #return h.reshape((3,3))
   return sol.x.reshape((3,3))
   #return inicial.reshape((3,3))
 
@@ -229,22 +215,22 @@ def main():
     # TODO: Cargar imágenes
   else:
     print("Modo de ejemplo")
-    im1 = ChecaP2.lee_imagen("./imagenes/yosemite1.jpg",1)
-    im2 = ChecaP2.lee_imagen("./imagenes/yosemite2.jpg",1)
+    im1 = auxiliar.lee_imagen("./imagenes/yosemite1.jpg",1)
+    im2 = auxiliar.lee_imagen("./imagenes/yosemite2.jpg",1)
 
     # Cogemos los descriptores de las tres imágenes y sus keypoints
-    kp1, des1 = ChecaP2.ejercicio1cSift(im1)
-    kp2, des2 = ChecaP2.ejercicio1cSift(im2)
+    kp1, des1 = auxiliar.getKpAndDescriptors(im1)
+    kp2, des2 = auxiliar.getKpAndDescriptors(im2)
 
     # Cogemos los matchers que van en dirección a la imagen central im2
     # Esto se realiza de esta forma para evitar acumulación de errores
     # Los matchers los cogemos con Lowe2nn que era el que tenía más calidad del
     # ejercicio 2
-    matcher12 = ChecaP2.getMatchesLowe2NN(des1, des2)
+    matcher12 = auxiliar.getMatchesLowe2NN(des1, des2)
 
     # Recogemos las listas de keypoints de cada matcher ordenadas según las
     # correspondencias
-    orderSrcKp1, orderDstKp12 = ChecaP2.getOrderedKeypoints(kp1, kp2, matcher12)
+    orderSrcKp1, orderDstKp12 = auxiliar.getOrderedKeypoints(kp1, kp2, matcher12)
     #(s_x, s_y) es el tamaño final de nuestro canvas
     # Estos valores se han cogido así porque son los que van bien con las imágenes
     # de yosemite
@@ -297,9 +283,9 @@ def main():
         imgOrdSrc[i] = [imgSrc3[0]/imgSrc3[2], imgSrc3[1]/imgSrc3[2]]
         imgOrdDst3 = h_canvas.dot([ordDstMod[i][0], ordDstMod[i][1], 1])
         cv2.line(canvas_final2, (int(imgOrdSrc[i][0]), int(imgOrdSrc[i][1])), (int(imgOrdDst3[0]/imgOrdDst3[2]),int(imgOrdDst3[1]/imgOrdDst3[2])), (0,0,255), 2)
-    p = ChecaP2.pintaI(canvas_final2, "prueba")
+    p = auxiliar.pintaI(canvas_final2, "prueba")
     cv2.imwrite("./resultados/matches1000.png", p)
 
+
 if __name__ == "__main__":
-  #cProfile.run("main()")
   main()
