@@ -36,7 +36,7 @@ def jacobiana(f, x, delta = None):
   # en función de fórmula dada en Multiple View in Geometry (Apéndice A6.2)
   if delta is None:
     delta = np.maximum(1e-6, 1e-4*np.abs(x))
-
+    print(delta)
   N = x.size
   fx = f(x)
 
@@ -46,7 +46,7 @@ def jacobiana(f, x, delta = None):
   return np.vstack(ders)
 
 
-def lm(f, inicial, objetivo, umbral = 1e-4, max_iter = 1000):
+def lm(f, inicial, objetivo, umbral = 1e-4, max_iter = 100):
   """Implementa el algoritmo de Levenberg-Marquadt.
    Dada f, calcula x tal que |f(x)-objetivo| < umbral en un entorno de inicial o
    devuelve la mejor aproximación encontrada si no ha encontrado tal x en max_iter iteraciones.
@@ -65,7 +65,7 @@ def lm(f, inicial, objetivo, umbral = 1e-4, max_iter = 1000):
   - err: |f(x)-objetivo|"""
 
 
-  I = np.eye(inicial.size, inicial.size) # identidad
+  I = np.eye(inicial.size) # identidad
 
   augment = 0.0001 # valor lambda
   x = inicial
@@ -74,9 +74,9 @@ def lm(f, inicial, objetivo, umbral = 1e-4, max_iter = 1000):
   norm = np.linalg.norm(epsilon)
 
   while norm > umbral and iters < max_iter:
-    J = jacobiana(f, x)
+    JT = jacobiana(f, x)
 
-    delta = np.linalg.solve(J.dot(J.T) + augment*I, -J.dot(epsilon)).reshape((9,))
+    delta = np.linalg.solve(JT.dot(JT.T) + augment*I, -JT.dot(epsilon)).reshape((9,))
     candidate = x + delta
     cand_norm = np.linalg.norm(f(candidate) - objetivo)
     if cand_norm < norm:
