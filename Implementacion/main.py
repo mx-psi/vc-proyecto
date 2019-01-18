@@ -66,9 +66,9 @@ def error_sampson_corr(orig, dest, h):
   Devuelve:
   - El error de Sampson para la correspondencia"""
 
-  epsilon = C_Hx(orig, dest, h)
-  lamb = np.linalg.solve(JJT(orig, dest, h), -epsilon)
-  error_samps = np.transpose(epsilon).dot(-lamb)
+  epsilon = C_Hx(orig, dest, h) # Definimos epsilon como la evaluación de C_H(X)
+  lamb = np.linalg.solve(JJT(orig, dest, h), -epsilon)  # Resolvemos la ecuación de lambda
+  error_samps = np.transpose(epsilon).dot(-lamb)    # Calculamos el error de Sampson como epsilon*(-lambda)
   return error_samps
 
 
@@ -80,6 +80,7 @@ def error_sampson(origs, dests, h):
   Devuelve:
   - El error de Sampson para el conjunto de correspondencias"""
 
+  # Para cada punto de correspondencia sumamos su error de Sampson
   err = 0
   for i in range(len(origs)):
     err += error_sampson_corr(origs[i], dests[i], h)
@@ -194,9 +195,8 @@ def creaMosaico(archivo1, archivo2, s_x, s_y):
 
   # Homografía de la imagen central al canvas. Es solo una traslación de las esquinas
   # a un rectángulo del mismo tamaño centrado dentro del canvas
-  # Como va a ser exacta, de cuatro puntos en cuatro puntos, no necesitamos
-  # aclarar que utilice cv2.RANSAC
-  h_canvas, mask = cv2.findHomography(np.array([[0,0], [wi, 0], [0,hi], [wi, hi]]), np.array([[p_x, p_y], [p_x+wi, p_y], [p_x, hi+p_y], [wi+p_x, hi+p_y]]))
+  # Esta homografía sabemos cuál es, ya que es solo una traslación. La escribimos:
+  h_canvas = np.array([[1., 0., p_x*1.0], [0., 1., p_y*1.0], [0., 0., 1.]])
 
 
   # Sustituimos encontrar la homografía con el algoritmo de error de Sampson
