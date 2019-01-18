@@ -17,7 +17,7 @@ def Ai(orig, dest):
   - orig: Punto de origen
   - dest: Punto de destino
   Devuelve:
-  - Matriz 2x9
+  - Matriz 2x9 que representa el sistema de ecuaciones
   """
 
   x, y = dest
@@ -65,8 +65,7 @@ def error_sampson_corr(orig, dest, h):
   - h: Matriz de homografía redimensionada como vector de R⁹
   Devuelve:
   - El error de Sampson para la correspondencia"""
-  if h.shape == (1,9):
-    h = h.reshape((9,))
+
   epsilon = C_Hx(orig, dest, h)
   lamb = np.linalg.solve(JJT(orig, dest, h), -epsilon)
   error_samps = np.transpose(epsilon).dot(-lamb)
@@ -133,7 +132,6 @@ def inicialHom(origs, dests):
   orig_n, T_orig = normaliza(origs)
   dest_n, T_dest = normaliza(dests, inv = True)
 
-  v = np.zeros(3)
   A = None
 
   # Para cada correspondencia concatena la matriz Ai
@@ -151,26 +149,22 @@ def inicialHom(origs, dests):
   return T_dest.dot(H).dot(T_orig)
 
 
-def getHom(origs, dests, orig_raro, dest_raro):
+def getHom(origs, dests):
   """Obtiene una homografía a partir de una lista de correspondencias.
   Argumentos posicionales:
-  - corr: Lista de pares de puntos en coordenadas inhomogéneas
+  - origs, dests: Lista de pares de puntos en coordenadas inhomogéneas
   Devuelve:
   - Matriz 3x3 que representa la homografía
-  - Error residual de la homografía
   """
 
   f = lambda h: error_sampson(origs, dests, h) # Minimiza error de Sampson
-
   inicial = inicialHom(origs, dests).reshape((9,)) # Valor inicial dado por DLT
-
   h, err = iterativo.lm(f, inicial, 0) # Aplica Levenberg-Marquadt
-
   return h.reshape((3,3))
 
 
 def creaMosaico(archivo1, archivo2, s_x, s_y):
-  """Crea un mosaico a partir de dos imágenes en un canvas de dimensiones dadas.
+  """Muestra un mosaico a partir de dos imágenes en un canvas de dimensiones dadas.
   Argumentos posicionales:
   - archivo1, archivo2: Archivos de imágenes
   - s_x, s_y: Dimensiones en píxeles del canvas"""
@@ -208,7 +202,7 @@ def creaMosaico(archivo1, archivo2, s_x, s_y):
   # Sustituimos encontrar la homografía con el algoritmo de error de Sampson
   ordSrcMod = np.array([orderSrcKp1[i][0] for i in range(len(orderSrcKp1))])
   ordDstMod = np.array([orderDstKp12[i][0] for i in range(len(orderDstKp12))])
-  h1 = getHom(ordSrcMod, ordDstMod, orderSrcKp1, orderDstKp12)
+  h1 = getHom(ordSrcMod, ordDstMod)
 
   # Se crea la imagen final haciendo llamadas a warpPerspective de cada imagen
   # con sus transformaciones correspondientes
@@ -246,7 +240,7 @@ if __name__ == "__main__":
   args = parser.parse_args()
 
   if args.modo == "manual":
-    creaMosaico(args.archivo1, args.archivo2, 1200, 600) # TODO: Cambiar en modo manual
+    creaMosaico(args.archivo1, args.archivo2, 1300, 700)
   else:
     print("Modo de ejemplo con imágenes Yosemite")
     print("Ejecuta \n   \"python3 main.py manual -h\" \npara ver instrucciones del modo manual")
