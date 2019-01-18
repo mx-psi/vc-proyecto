@@ -79,6 +79,8 @@ y por tanto podemos calcular
 $$JJ^T = \sum_{i = 1}^4 \left(\frac{\partial C_h(\mathbf{X})}{\partial \mathbf{X}_i}\right) \left(\frac{\partial C_h(\mathbf{X})}{\partial \mathbf{X}_i}\right)^T = \sum_{i = 1}^4 (\mathcal{C}_H(\mathbf{X} + \mathbf{e}_i) - \mathcal{C}_H(\mathbf{X})) (\mathcal{C}_H(\mathbf{X} + \mathbf{e}_i) - \mathcal{C}_H(\mathbf{X}))^T$$
 lo que nos permite calcular $JJ^T$ directamente a partir de $\mathcal{C}_H$.
 
+En la implementación utilizaremos esta idea para calcularla como las diferencias finitas de primer orden con la función `iterativo.jacobiano`.
+
 ## Cálculo para múltiples correspondencias
 
 En el algoritmo general tendremos múltiples correspondencias.
@@ -87,7 +89,7 @@ $$\mathcal{S}_H(\{\mathbf{x}_i \leftrightarrow \mathbf{x}'_i\}_{i = 1, \dots, N}
 
 # Algoritmo de estimación de homografías
 
-En esta sección describimos el algoritmo iterativo de estimación de homografías 2D a partir de un conjunto de correspondencias haciendo uso del error de Sampson.
+En esta sección describimos el algoritmo iterativo de estimación de homografías 2D a partir de un conjunto de correspondencias haciendo uso del error de Sampson. Hemos decidido implementar el algoritmo de optimización manualmente para hacer nosotros mismos todo el proceso.
 
 ## Estimación inicial
 
@@ -151,42 +153,42 @@ La importancia de que $\lambda$ cambie no debe de pasar por alto, ya que es el n
 
 Esta dualidad entre Gauss-Newton y descenso por gradiente es el núcleo de la iteración de Levenberg-Marquadt y es lo que la diferencia de estos otros dos métodos. Su flexibilidad le permite aplicar Gauss-Newton cuando la exploración va bien y cada vez se disminuye más el error, y si va mal se acerca al descenso por gradiente para hacer saltos más amplios en la dirección de menor coste.
 
-Una de las funciones que hemos necesitado implementar para realizar este método iterativo ha sido el jacobiano, para poder resolver la ecuación normal aumentada. Como queremos aproximar una derivada, lo que hacemos es simplemente definir un $\delta_i$ que depende de la variable $x_i$ que queramos derivar de $f$ y realizamos la derivada i-esima como $(f(x+\delta_i e_i)-f(x))/\delta_i$ donde e_i denota el i-ésimo vector de la base usual. El resto de la estructura se comenta a continuación:
+Una de las funciones que hemos necesitado implementar para realizar este método iterativo ha sido el jacobiano, para poder resolver la ecuación normal aumentada. Como queremos aproximar una derivada, lo que hacemos es simplemente definir un $\delta_i$ que depende de la variable $x_i$ que queramos derivar de $f$ y realizamos la derivada i-esima como $(f(x+\delta_i e_i)-f(x))/\delta_i$ donde $e_i$ denota el i-ésimo vector de la base usual. El resto de la estructura se comenta a continuación:
 
 :::{.algorithm name="\textit{Iteración Levenberg-Marquadt}"}
 
 $\;$
 
 Entrada
-:  Como parámetros necesarios, una $f$ que queremos minimizar, un punto 'inicial' desde el que empezamos a explorar y el 'objetivo' al que queremos llegar con $f$ (0, en nuestro caso). Los parámetros opciones son el número máximo de iteraciones en 'max\_iter' y el umbral cerca del objetivo en el que paramos la búsqueda, en 'umbral'.
+:  Como parámetros necesarios, una $f$ que queremos minimizar, un punto `inicial` desde el que empezamos a explorar y el `objetivo` al que queremos llegar con $f$ (0, en nuestro caso). Los parámetros opciones son el número máximo de iteraciones en `max_iter` y el umbral cerca del objetivo en el que paramos la búsqueda, en `umbral`.
 
 Salida
-:  Un punto $x$ que minimiza la expresión $|f(x)-objetivo|$ y el error, que es justo el valor de $|f(x)-objetivo|$.
+:  Un punto $x$ que minimiza la expresión $|f(x)-\mathtt{objetivo}|$ y el error, que es justo el valor de $|f(x)-\mathtt{objetivo}|$.
 
 1. Inicializa:
    a) $x$ al punto inicial.
    b) iteraciones actuales a 0.
-   c) $\lambda$ a 0.0001 (en el código se menciona como 'augment').
+   c) $\lambda$ a 0.0001 (en el código se menciona como `augment`).
    d) $\epsilon$ a $f(x)-objetivo$ y norm a su norma.
-2. Mientras 'norm' > 'umbral' y 'iters' < 'max\_iter':
+2. Mientras `norm` > `umbral` y `iters` < `max_iter`:
    a) calculamos J como el jacobiano de $f$ en $x$.
    b) conseguimos $\Delta$ resolviendo la ecuación normal aumentada $(J^TJ+\lambda I)\Delta = -J^T\epsilon$.
-   c) actualizamos $x$ como $x + \Delta$ si eso disminuye el error, en cuyo caso actualizamos $\epsilon$ y 'norm'.
+   c) actualizamos $x$ como $x + \Delta$ si eso disminuye el error, en cuyo caso actualizamos $\epsilon$ y `norm`.
    d) actualizamos $\lambda$ dividiendo por 10 si hemos disminuido el error, o multiplicando por 10 si no lo hemos hecho.
 
 :::
 
 ## Análisis de los resultados
 
-A continuación se exponen varias imágenes resultado de utilizar el algoritmo. Como solo queríamos ver una pequeña muestra de cómo actúa el algoritmo, y de ver que de verdad daba una homografía aceptable, hemos usado las imágenes de yosemite que se nos daban de muestra para las prácticas. Hemos cogido un par de ellas, y cogiendo una lista de correspondencias entre puntos (obtenida de las prácticas anteriores) hemos probado el algoritmo.
+Para el análisis de los resultados hemos decidido aplicar el cálculo de las homografías con error de Sampson al problema de creación de mosaicos con el que trabajamos en la práctica 2, de tal forma que podamos observar visualmente la calidad de los resultados. Como solo queríamos ver una pequeña muestra de cómo actúa el algoritmo, y de ver que de verdad daba una homografía aceptable, hemos usado las imágenes de yosemite que se nos daban de muestra para las prácticas. Hemos cogido un par de ellas, y cogiendo una lista de correspondencias entre puntos (obtenida de las prácticas anteriores) hemos probado el algoritmo.
 
 Una de las primeras apreciaciones que hemos visto sobre este algoritmo ha sido su efecto sobre outliers en los puntos de la imagen. Hemos observado que el error de Sampson es muy alto cuando hay algunos outliers dentro del dataset de puntos. En el caso que se ve en la figura \ref{malo} podemos ver cómo claramente es posible que hasta empeore la homografía que teníamos hasta ese momento aunque el error de Sampson disminuya. Recordemos que el error de Sampson es una aproximación de la suma geométrica de las distancias. En la figura \ref{malo} se han coloreado unas líneas rojas con estas distancias, empezando en donde está la imagen de un punto frente a su correspondencia. El objetivo es que la suma de longitudes de estas líneas sea lo menor posible. Debido a esto, es posible que el algoritmo esté intentando disminuir esta distancia geométrica acercando los puntos más alejados que son los que afectan más al error, es decir, los outliers. De ahí que cuando intente mejorar el resultado, en realidad empeore nuestra percepción de la homografía final. Podemos fijarnos que hay un corte claro en la ladera de la montaña, donde en la primera imagen se ve de forma continua, aquí encontramos dónde ambas imágenes se mezclan rápidamente. 
 
 \begin{figure}[h!]
 \begin{center}
-  \includegraphics[width=0.6\textwidth]{Implementacion/resultados/outliers1}
+  \includegraphics[width=0.8\textwidth]{Implementacion/resultados/outliers1}
 
-  \includegraphics[width=0.6\textwidth]{Implementacion/resultados/outliers2}
+  \includegraphics[width=0.8\textwidth]{Implementacion/resultados/outliers2}
 
   \caption{Resultado de aplicar el algoritmo con outliers. La primera imagen es el resultado de la homografía inicial (con DLT) y la segunda es la 'mejorada' del error de Sampson, en la que ha empeorado el resultado final.\label{malo}}
 
@@ -201,7 +203,7 @@ Una vez que hacemos esa comprobación, el algoritmo funciona muy bien. A continu
 
 \begin{figure}[h!]
 \begin{center}
-  \includegraphics[width=0.6\textwidth]{Implementacion/resultados/bueno1}
+  \includegraphics[width=0.8\textwidth]{Implementacion/resultados/bueno1}
 
   \caption{Resultado de aplicar el algoritmo sin outliers.\label{bueno}}
 
@@ -211,7 +213,7 @@ Una vez que hacemos esa comprobación, el algoritmo funciona muy bien. A continu
 
 Que el algoritmo devuelva una buena homografía no es lo único que debemos mirar, ya que es necesario también mirar que la solución no es exactamente la misma que la que nos da el algoritmo de inicialización. Es necesario saber si merece la pena todo el análisis y los cálculos adicionales que hemos hecho para la mejora respecto a la inicialización.
 
-Nuestra conclusión, con los ejemplos que hemos visto, es que mejora un poco, pero es prácticamente imperceptible, al menos a ojo. Esto se ha traducido en el error de Samspon también, que cambiaba en un orden de 10^{-6} desde la inicialización al error final, que es una medida algo más concreta y correcta que el cálculo meramente visual. Esto no es culpa del error de Sampson, si no que el algoritmo de inicialización DLT parece ser muy eficiente, al menos en las imágenes que hemos probado (correspondientes al paquete de yosemite).
+Nuestra conclusión, con los ejemplos que hemos visto, es que mejora un poco, pero es prácticamente imperceptible, al menos a ojo. Esto se ha traducido en el error de Samspon también, que cambiaba en un orden de $10^{-6}$ desde la inicialización al error final, que es una medida algo más concreta y correcta que el cálculo meramente visual. Esto no es culpa del error de Sampson, si no que el algoritmo de inicialización DLT parece ser muy eficiente, al menos en las imágenes que hemos probado (correspondientes al paquete de yosemite).
 
 Esto no quiere decir que todo el trabajo y que el algoritmo sea inútil, ni mucho menos. Este algoritmo tendrá utilidad en aplicaciones concretas en las que la precisión y exactitud de la homografía en cuestión sean de importancia vital para el correcto funcionamiento del programa. Ejemplos en los que esto podría ser cierto son imágenes de medidas de piezas de un taller o una empresa, a partir de una serie de fotos tomadas de ellas y una distancia referencia dentro de la imagen (un metro situado al lado de las piezas, por ejemplo). En este caso, la exactitud de la homografía es lo que permite calcular con precisión el tamaño de las piezas, y podría ser una posible aplicación de esta mejora del cálculo de homografías.
 
@@ -220,10 +222,27 @@ Por otro lado, siempre que tengamos los recursos y tiempo necesarios, es tambié
 
 ## Propuestas de mejora
 
-El cálculo del error de Sampson es considerablemente lento. Aunque es cierto que el programa tarda en ejecutarse en unos diez segundos, si queremos aplicar este algoritmo en cualquier aplicación de tiempo real (que es algo que es probable, teniendo en cuenta los usos de este tipo de programas) es necesario que la aplicación se quede en dos órdenes de magnitud de segundos de los que tarda ahora. Tras analizar qué era lo que más tiempo necesitaba, hemos visto que era el cálculo del error de Sampson y, en concreto, el cálculo de la matriz C_H(X) mencionada en la sección [Error de Sampson]. Una posible mejora sería hacer más eficiente estos cálculos mediante el uso de métodos numéricos o librerías optimizadas para este tipo de cálculos.
+El cálculo del error de Sampson es considerablemente lento. Aunque es cierto que el programa tarda en ejecutarse en unos diez segundos, si queremos aplicar este algoritmo en cualquier aplicación de tiempo real (que es algo que es probable, teniendo en cuenta los usos de este tipo de programas) es necesario que la aplicación se quede en dos órdenes de magnitud de segundos de los que tarda ahora. Tras analizar qué era lo que más tiempo necesitaba, hemos visto que era el cálculo del error de Sampson y, en concreto, el cálculo de la matriz $\mathcal{C}_H(\mathbf{X})$ mencionada en la sección [Error de Sampson]. Una posible mejora sería hacer más eficiente estos cálculos mediante el uso de métodos numéricos o librerías optimizadas para este tipo de cálculos.
 
-Dentro de las mejoras de partes concretas del algoritmo, no hemos llegado a implementar algunas de las que se comentan en [@hartley2003multiple]. Algunas de ellas son la mejora del algoritmo de Levenberg-Marquadt para mejorar su eficiencia (llamada 'sparse Levenberg-Marquadt'), o la mejora sobre el cálculo del error de Sampson para tener en cuenta una distribución de error en las medidas de las correspondencias que no sea usual y que venga dada por una matriz de covarianza. Ambas mejoras vienen bien explicadas y aportarían una mejor adaptación del algoritmo a otro tipo de situaciones.
+Dentro de las mejoras de partes concretas del algoritmo, no hemos llegado a implementar algunas de las que se comentan en [@hartley2003multiple], en concreto, la mejora sobre el cálculo del error de Sampson para tener en cuenta una distribución de error en las medidas de las correspondencias que no sea usual y que venga dada por una matriz de covarianza. Ambas mejoras vienen bien explicadas y aportarían una mejor adaptación del algoritmo a otro tipo de situaciones.
 
 Por otro lado, una forma educativa, bonita y visual de ver cómo funciona la optimización del error de Sampson sería ir construyendo una secuencia de imágenes con las homografías de cada iteración. Creemos que esto es una mejora interesante viendo el proyecto como una herramienta de aprendizaje para un alumno que haya cursado Visión por Computador y quiera profundizar un poco más en las estimaciones de homografías. Esta mejora podría ser de utilidad para ese caso concreto.
 
+
 # Apéndice: Funcionamiento del código adjunto {.unnumbered}
+
+El código implementado se adjunta en la carpeta `Implementacion`.
+Para ver el ejemplo mencionado basta ejecutar el programa principal sin argumentos:
+```bash
+python3 main.py
+```
+
+En caso de que queramos ejecutar el programa manualmente con dos imágenes llamamos al algoritmo con:
+```bash
+python3 manual [nombre de fichero imagen 1] [nombre de fichero de imagen 2]
+```
+
+El tiempo de ejecución del programa varía entre los 10 segundos y los 30 segundos en función del ordenador utilizado.
+Se incluyen algunas imágenes de la práctica 2 con las que observar el rendimiento del programa.
+
+\newpage

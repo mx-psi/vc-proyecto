@@ -7,20 +7,6 @@ import argparse
 import math
 import numpy as np
 
-def e(N, i):
-  """Devuelve el i-ésimo vector de la base usual de R^N.
-  Argumentos posicionales:
-  - N: Dimensión del vector
-  - i: Posición en la base usual
-
-  Devuelve:
-  Vector de dimensión N con componentes todas nulas salvo en la posición i"""
-  # Más eficiente que np.eye(1,N,i) de acuerdo con
-  v = np.zeros(N)
-  v[i] = 1
-  return v
-
-
 def jacobiana(f, x, delta = None):
   """Aproxima la traspuesta del jacobiano de f en x mediante el cálculo de
   diferencias finitas de primer orden en cada componente.
@@ -41,11 +27,13 @@ def jacobiana(f, x, delta = None):
 
   ders = []
   for i in range(N): # Añade las derivadas parciales respecto de xi
-    ders.append((f(x + delta*e(N,i)) - fx)/delta[i])
+    v = np.zeros(N)
+    v[i] = delta[i] # Dirección de la derivada
+    ders.append((f(x + v) - fx)/delta[i])
   return np.vstack(ders)
 
 
-def lm(f, inicial, objetivo, umbral = 1e-4, max_iter = 150):
+def lm(f, inicial, objetivo, umbral = 1e-4, max_iter = 100):
   """Implementa el algoritmo de Levenberg-Marquadt.
    Dada f, calcula x tal que |f(x)-objetivo| < umbral en un entorno de inicial o
    devuelve la mejor aproximación encontrada si no ha encontrado tal x en max_iter iteraciones.
@@ -67,23 +55,22 @@ def lm(f, inicial, objetivo, umbral = 1e-4, max_iter = 150):
   I = np.eye(inicial.size) # identidad
 
   augment = 0.0001 # valor lambda
-  x = inicial
-  iters = 0
+  x = inicial # Mejor solución hasta el momento
+  iters = 0 # Número de iteraciones
   epsilon = f(x)-objetivo
-  norm = np.linalg.norm(epsilon)
+  norm = np.linalg.norm(epsilon) # Valor a minimizar
 
   while norm > umbral and iters < max_iter:
     if np.isinf(augment):
       # No se ha conseguido convergencia. Abortamos
       break
 
-    JT = jacobiana(f, x)
+    JT = jacobiana(f, x) # Traspuesta de la jacobiana
 
     try:
       delta = np.linalg.solve(JT.dot(JT.T) + augment*I, -JT.dot(epsilon)).reshape((9,))
     except np.linalg.linalg.LinAlgError:
-      # Matriz singular. Aumentamos el lambda
-      print("Matriz singular") # TODO: Eliminar
+      # Matriz singular. Aumentamos el parámetro augment
       augment *= 10
       continue
 

@@ -20,18 +20,11 @@ def Ai(orig, dest):
   - Matriz 2x9
   """
 
-  if dest.size == 2:
-    x, y = dest
-    w = 1
-  else:
-    x, y, w = dest
-
-  if orig.size == 2:
-    orig = np.append(orig,1)
-
+  x, y = dest
+  orig = np.append(orig,1)
   zeros = np.zeros(3)
-  r1 = np.concatenate((zeros, -w*orig, y*orig))
-  r2 = np.concatenate((w*orig, zeros, -x*orig))
+  r1 = np.concatenate((zeros, -orig, y*orig))
+  r2 = np.concatenate((orig, zeros, -x*orig))
   return np.vstack((r1,r2))
 
 
@@ -64,7 +57,6 @@ def JJT(orig, dest, h):
 
   return JT.T.dot(JT)
 
-
 def error_sampson_corr(orig, dest, h):
   """Calcula el error de Sampson para una correspondencia.
   Argumentos posicionales:
@@ -91,9 +83,7 @@ def error_sampson(origs, dests, h):
 
   err = 0
   for i in range(len(origs)):
-    err_it = error_sampson_corr(origs[i], dests[i], h)
-    err += err_it
-
+    err += error_sampson_corr(origs[i], dests[i], h)
   return err
 
 
@@ -180,24 +170,22 @@ def getHom(origs, dests, orig_raro, dest_raro):
 
 
 def creaMosaico(archivo1, archivo2, s_x, s_y):
-  # TODO: Documentar
-  # TODO: Revisar comentarios
+  """Crea un mosaico a partir de dos imágenes en un canvas de dimensiones dadas.
+  Argumentos posicionales:
+  - archivo1, archivo2: Archivos de imágenes
+  - s_x, s_y: Dimensiones en píxeles del canvas"""
 
   im1 = auxiliar.lee_imagen(archivo1,1)
   im2 = auxiliar.lee_imagen(archivo2,1)
 
-  # Cogemos los descriptores de las tres imágenes y sus keypoints
+  # Cogemos los descriptores de las imágenes y sus keypoints
   kp1, des1 = auxiliar.getKpAndDescriptors(im1)
   kp2, des2 = auxiliar.getKpAndDescriptors(im2)
 
-  # Cogemos los matchers que van en dirección a la imagen central im2
-  # Esto se realiza de esta forma para evitar acumulación de errores
-  # Los matchers los cogemos con Lowe2nn que era el que tenía más calidad del
-  # ejercicio 2
+  # Hallamos matches
   matcher12 = auxiliar.getMatchesLowe2NN(des1, des2)
 
-  # Recogemos las listas de keypoints de cada matcher ordenadas según las
-  # correspondencias
+  # Recogemos las listas de keypoints de cada matcher ordenadas
   orderSrcKp1, orderDstKp12 = auxiliar.getOrderedKeypoints(kp1, kp2, matcher12)
 
   # Se crea el canvas final de tamaño s_x x s_y con tres bandas y uint8 por elemento
@@ -209,24 +197,22 @@ def creaMosaico(archivo1, archivo2, s_x, s_y):
   # Punto en el que anclamos la imagen central dentro del canvas
   p_x = 350
   p_y = 50
+
   # Homografía de la imagen central al canvas. Es solo una traslación de las esquinas
   # a un rectángulo del mismo tamaño centrado dentro del canvas
   # Como va a ser exacta, de cuatro puntos en cuatro puntos, no necesitamos
   # aclarar que utilice cv2.RANSAC
   h_canvas, mask = cv2.findHomography(np.array([[0,0], [wi, 0], [0,hi], [wi, hi]]), np.array([[p_x, p_y], [p_x+wi, p_y], [p_x, hi+p_y], [wi+p_x, hi+p_y]]))
 
-  # Sustituimos encontrar la homografía y lo hacemos con getHom en lugar de findHomography
+
+  # Sustituimos encontrar la homografía con el algoritmo de error de Sampson
   ordSrcMod = np.array([orderSrcKp1[i][0] for i in range(len(orderSrcKp1))])
   ordDstMod = np.array([orderDstKp12[i][0] for i in range(len(orderDstKp12))])
   h1 = getHom(ordSrcMod, ordDstMod, orderSrcKp1, orderDstKp12)
 
   # Se crea la imagen final haciendo llamadas a warpPerspective de cada imagen
   # con sus transformaciones correspondientes
-  # Mientras que la central solo es la homografía que hemos hallado antes,
-  # para las de los extremos necesitamos componer las homografías que las llevan
-  # a la central con la que la lleva a canvas. Como lo primero que se aplica son
-  # las que la llevan a la central, el orden al componer es h_canvas * h_12
-  # y h_canvas * h_32. Este producto se hace con dot
+
   canvas_final2 = canvas_final
   # El borderMode del primer warpPerspective se pone a Constant para el fondo
   # El resto de borderMode se ponen a TRANSPARENT para no pisar el resto de imágenes
