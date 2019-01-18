@@ -126,7 +126,7 @@ El cálculo del vector singular es el algoritmo utilizado normalmente para la re
 
 ## Método iterativo
 
-El método iterativo que se ha usado es, como ya se ha mencionado previamente, el algoritmo de Levenberg-Marquadt. Este algoritmo es una variación de Gauss-Newton en la que se cambia la ecuación de iteración, que, en función de la convergencia del algoritmo oscila entre el método de Gauss-Newton y el método de gradiente descendente. 
+El método iterativo que se ha usado es, como ya se ha mencionado previamente, el algoritmo de Levenberg-Marquadt. Este algoritmo es una variación de Gauss-Newton en la que se cambia la ecuación de iteración, que, en función de la convergencia del algoritmo oscila entre el método de Gauss-Newton y el método de gradiente descendente.
 
 La ecuación del método de Gauss Newton es
 $$J^TJ\Delta = -J^T\epsilon,$$
@@ -139,6 +139,14 @@ donde $\lambda$ es un término que va cambiando por iteración: aumenta si no co
 
 
 <!-- TODO: Especificación del algoritmo -->
+
+
+7.52585
+7.3437
+
+Va todo guay sin outliers y es capaz de mejorarlo un poco. Cuando hay más ruido en imagenes quizá se note más. imagen en iterativodlt
+
+
 
 
 # Apéndice: Funcionamiento del código adjunto {.unnumbered}
