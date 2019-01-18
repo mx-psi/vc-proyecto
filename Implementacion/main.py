@@ -12,8 +12,7 @@ import auxiliar
 from scipy import optimize
 
 def Ai(orig, dest):
-  """Calcula ecuaciones que impone una correspondencia
-  sobre las incógnitas de una homografía
+  """Calcula ecuaciones que impone una correspondencia sobre las incógnitas de una homografía
   Argumentos posicionales:
   - orig: Punto de origen
   - dest: Punto de destino
@@ -91,15 +90,9 @@ def error_sampson(origs, dests, h):
   - El error de Sampson para el conjunto de correspondencias"""
 
   err = 0
-  out0=0
-  out1=0
   for i in range(len(origs)):
     err_it = error_sampson_corr(origs[i], dests[i], h)
     err += err_it
-    if(err_it > 100):
-      out0+=1
-    else:
-      out1+=1
 
   return err
 
@@ -123,12 +116,12 @@ def normaliza(puntos, inv = False):
   # Factor de escalado para normalizar distacia media
   escalado = math.sqrt(2)/distancia_media
 
-  if inv:
+  if inv: # Calcula transformación inversa
     S = np.diag([1/escalado,1/escalado,1])
     tx,ty = centroide
     T = np.array([[1,0,tx], [0,1,ty], [0,0,1]])
     M = T.dot(S)
-  else:
+  else: # Calcula transformación directa
     tx,ty = - centroide
     T = np.array([[1,0,tx], [0,1,ty], [0,0,1]])
     S = np.diag([escalado,escalado,1])
@@ -140,12 +133,12 @@ def normaliza(puntos, inv = False):
 
 
 def inicialHom(origs, dests):
-  """Obtiene una estimación inicial de la homografía
+  """Obtiene una estimación inicial de la homografía mediante el algoritmo DLT
   Argumentos posicionales:
   - origs: Lista de orígenes
   - dests: Lista de coordenadas de destinos
   Devuelve:
-  - Estimación inicial de homografía que ajusta estas correspondencias"""
+  - Estimación inicial de homografía que ajusta estas correspondencias mediante algoritmo DLT"""
 
   orig_n, T_orig = normaliza(origs)
   dest_n, T_dest = normaliza(dests, inv = True)
@@ -164,6 +157,7 @@ def inicialHom(origs, dests):
   *_, V = np.linalg.svd(A)
   H = V[-1,:].reshape((3,3))
 
+  # Devuelve composición con transformaciones de normalización
   return T_dest.dot(H).dot(T_orig)
 
 
@@ -177,119 +171,97 @@ def getHom(origs, dests, orig_raro, dest_raro):
   """
 
   f = lambda h: error_sampson(origs, dests, h) # Minimiza error de Sampson
-  #inicial = inicialHom(origs, dests).reshape((9,)) # Valor inicial dado por DLT
-  #h, err = iterativo.lm(f, inicial, 0)
 
   inicial = inicialHom(origs, dests).reshape((9,)) # Valor inicial dado por DLT
-  #inicial, mask = cv2.findHomography(orig_raro, dest_raro, cv2.RANSAC, ransacReprojThreshold=1)
-  inicial = inicial.reshape((9,))
 
-  h, err = iterativo.lm(f, inicial, 0)
-  #sol = optimize.root(f, inicial, method='lm')
-  #sol = optimize.minimize(f, inicial, method='Powell', options = {'maxfev':1000})
-  #print("ERROR FINAL")
-  #print(f(sol.x))
-  #print("ERROR")
-  #print(f(inicial))
-  #print(err)
+  h, err = iterativo.lm(f, inicial, 0) # Aplica Levenberg-Marquadt
 
   return h.reshape((3,3))
-  #return sol.x.reshape((3,3))
-  #return inicial.reshape((3,3))
 
 
-def main():
-  parser = argparse.ArgumentParser()
-  subparsers = parser.add_subparsers(help="Acceso al modo manual", dest="modo")
+def creaMosaico(archivo1, archivo2, s_x, s_y):
+  # TODO: Documentar
+  # TODO: Revisar comentarios
+
+  im1 = auxiliar.lee_imagen(archivo1,1)
+  im2 = auxiliar.lee_imagen(archivo2,1)
+
+  # Cogemos los descriptores de las tres imágenes y sus keypoints
+  kp1, des1 = auxiliar.getKpAndDescriptors(im1)
+  kp2, des2 = auxiliar.getKpAndDescriptors(im2)
+
+  # Cogemos los matchers que van en dirección a la imagen central im2
+  # Esto se realiza de esta forma para evitar acumulación de errores
+  # Los matchers los cogemos con Lowe2nn que era el que tenía más calidad del
+  # ejercicio 2
+  matcher12 = auxiliar.getMatchesLowe2NN(des1, des2)
+
+  # Recogemos las listas de keypoints de cada matcher ordenadas según las
+  # correspondencias
+  orderSrcKp1, orderDstKp12 = auxiliar.getOrderedKeypoints(kp1, kp2, matcher12)
+
+  # Se crea el canvas final de tamaño s_x x s_y con tres bandas y uint8 por elemento
+  canvas_final = np.zeros((s_x,s_y,3), np.uint8)
+
+  # hi, wi es la altura y anchura de la imagen central
+  hi = im2.shape[0]
+  wi = im2.shape[1]
+  # Punto en el que anclamos la imagen central dentro del canvas
+  p_x = 350
+  p_y = 50
+  # Homografía de la imagen central al canvas. Es solo una traslación de las esquinas
+  # a un rectángulo del mismo tamaño centrado dentro del canvas
+  # Como va a ser exacta, de cuatro puntos en cuatro puntos, no necesitamos
+  # aclarar que utilice cv2.RANSAC
+  h_canvas, mask = cv2.findHomography(np.array([[0,0], [wi, 0], [0,hi], [wi, hi]]), np.array([[p_x, p_y], [p_x+wi, p_y], [p_x, hi+p_y], [wi+p_x, hi+p_y]]))
+
+  # Sustituimos encontrar la homografía y lo hacemos con getHom en lugar de findHomography
+  ordSrcMod = np.array([orderSrcKp1[i][0] for i in range(len(orderSrcKp1))])
+  ordDstMod = np.array([orderDstKp12[i][0] for i in range(len(orderDstKp12))])
+  h1 = getHom(ordSrcMod, ordDstMod, orderSrcKp1, orderDstKp12)
+
+  # Se crea la imagen final haciendo llamadas a warpPerspective de cada imagen
+  # con sus transformaciones correspondientes
+  # Mientras que la central solo es la homografía que hemos hallado antes,
+  # para las de los extremos necesitamos componer las homografías que las llevan
+  # a la central con la que la lleva a canvas. Como lo primero que se aplica son
+  # las que la llevan a la central, el orden al componer es h_canvas * h_12
+  # y h_canvas * h_32. Este producto se hace con dot
+  canvas_final2 = canvas_final
+  # El borderMode del primer warpPerspective se pone a Constant para el fondo
+  # El resto de borderMode se ponen a TRANSPARENT para no pisar el resto de imágenes
+  canvas_final2 = cv2.warpPerspective(im1,  h_canvas.dot(h1), (s_x, s_y), canvas_final, borderMode = cv2.BORDER_CONSTANT)
+  canvas_final2 = cv2.warpPerspective(im2, h_canvas, (s_x, s_y), canvas_final2, borderMode = cv2.BORDER_TRANSPARENT)
+
+  imgOrdSrc = ordSrcMod.copy()
+
+  # Para la mejor visualización de las distancias geométricas entre los puntos y sus imágenes,
+  # aquí se colorea con una línea roja la distancia entre la imagen de un punto y su correspondencia.
+  for i in range(len(ordSrcMod)):
+    imgSrc3 = h_canvas.dot(h1).dot([ordSrcMod[i][0], ordSrcMod[i][1],1])
+    imgOrdSrc[i] = [imgSrc3[0]/imgSrc3[2], imgSrc3[1]/imgSrc3[2]]
+    imgOrdDst3 = h_canvas.dot([ordDstMod[i][0], ordDstMod[i][1], 1])
+    #Se filtran solo los puntos que aparecen cerca del canvas final para crear líneas
+    if(imgOrdSrc[i][0] <= 2000 and imgOrdSrc[i][1] <= 2000 and imgOrdDst3[0]/imgOrdDst3[2] <= 2000 and imgOrdDst3[1]/imgOrdDst3[2] <= 2000):
+      if(imgOrdSrc[i][0] >= -2000 and imgOrdSrc[i][1] >= -2000 and imgOrdDst3[0]/imgOrdDst3[2] >= -2000 and imgOrdDst3[1]/imgOrdDst3[2] >= -2000):
+        #Se crean las líneas rojas de distancias
+        cv2.line(canvas_final2, (int(imgOrdSrc[i][0]), int(imgOrdSrc[i][1])), (int(imgOrdDst3[0]/imgOrdDst3[2]),int(imgOrdDst3[1]/imgOrdDst3[2])), (0,0,255), 2)
+  # Se pinta el canvas final
+  auxiliar.pintaI(canvas_final2, "Mosaico final")
+
+
+if __name__ == "__main__":
+  parser = argparse.ArgumentParser(description =
+      "Ejecuta sin argumentos para ver un ejemplo o ejecuta con 'manual' para introducir tu propio ejemplo")
+  subparsers = parser.add_subparsers(help="Modo manual: Ejemplifica obtención de homografía \ncon construcción de mosaico entre dos imágenes hallando sus puntos SIFT", dest="modo")
   manual = subparsers.add_parser('manual')
   manual.add_argument('archivo1', type=str, help="Archivo de imagen 1")
   manual.add_argument('archivo2', type=str, help="Archivo de imagen 2")
   args = parser.parse_args()
 
   if args.modo == "manual":
-    print("Modo manual")
-    # TODO: Cargar imágenes
+    creaMosaico(args.archivo1, args.archivo2, 1200, 600) # TODO: Cambiar en modo manual
   else:
-    print("Modo de ejemplo")
-    im1 = auxiliar.lee_imagen("./imagenes/yosemite1.jpg",1)
-    im2 = auxiliar.lee_imagen("./imagenes/yosemite2.jpg",1)
-
-    # Cogemos los descriptores de las tres imágenes y sus keypoints
-    kp1, des1 = auxiliar.getKpAndDescriptors(im1)
-    kp2, des2 = auxiliar.getKpAndDescriptors(im2)
-
-    # Cogemos los matchers que van en dirección a la imagen central im2
-    # Esto se realiza de esta forma para evitar acumulación de errores
-    # Los matchers los cogemos con Lowe2nn que era el que tenía más calidad del
-    # ejercicio 2
-    matcher12 = auxiliar.getMatchesLowe2NN(des1, des2)
-
-    # Recogemos las listas de keypoints de cada matcher ordenadas según las
-    # correspondencias
-    orderSrcKp1, orderDstKp12 = auxiliar.getOrderedKeypoints(kp1, kp2, matcher12)
-    #(s_x, s_y) es el tamaño final de nuestro canvas
-    # Estos valores se han cogido así porque son los que van bien con las imágenes
-    # de yosemite
-    s_x = 1200
-    s_y = 600
-    # Se crea el canvas final de tamaño s_x x s_y con tres bandas y uint8 por elemento
-    canvas_final = np.zeros((s_x,s_y,3), np.uint8)
-
-    # hi, wi es la altura y anchura de la imagen central
-    hi = im2.shape[0]
-    wi = im2.shape[1]
-    # Punto en el que anclamos la imagen central dentro del canvas
-    p_x = 350
-    p_y = 50
-    # Homografía de la imagen central al canvas. Es solo una traslación de las esquinas
-    # a un rectángulo del mismo tamaño centrado dentro del canvas
-    # Como va a ser exacta, de cuatro puntos en cuatro puntos, no necesitamos
-    # aclarar que utilice cv2.RANSAC
-    h_canvas, mask = cv2.findHomography(np.array([[0,0], [wi, 0], [0,hi], [wi, hi]]), np.array([[p_x, p_y], [p_x+wi, p_y], [p_x, hi+p_y], [wi+p_x, hi+p_y]]))
-
-    # Hallamos las otras dos homografías, en dirección a la imagen central
-    # Esta vez se aclara que se utilice RANSAC con un máximo error de proyección
-    # de 1 para los inliners
-    #h1, mask = cv2.findHomography(orderSrcKp1, orderDstKp12, cv2.RANSAC, ransacReprojThreshold=1)
-
-    # Sustituimos encontrar la homografía y lo hacemos con getHom en lugar de findHomography
-    ordSrcMod = np.array([orderSrcKp1[i][0] for i in range(len(orderSrcKp1))])
-    ordDstMod = np.array([orderDstKp12[i][0] for i in range(len(orderDstKp12))])
-    h1 = getHom(ordSrcMod, ordDstMod, orderSrcKp1, orderDstKp12)
-    #h1 = getHom(ordSrcMod, ordDstMod)
-    #h1 = inicialHom(ordSrcMod, ordDstMod)
-    #h1 = cv2.findHomography(ordSrcMod, ordDstMod, cv2.RANSAC, 1)[0]
-
-    # Se crea la imagen final haciendo llamadas a warpPerspective de cada imagen
-    # con sus transformaciones correspondientes
-    # Mientras que la central solo es la homografía que hemos hallado antes,
-    # para las de los extremos necesitamos componer las homografías que las llevan
-    # a la central con la que la lleva a canvas. Como lo primero que se aplica son
-    # las que la llevan a la central, el orden al componer es h_canvas * h_12
-    # y h_canvas * h_32. Este producto se hace con dot
-    canvas_final2 = canvas_final
-    # El borderMode del primer warpPerspective se pone a Constant para el fondo
-    # El resto de borderMode se ponen a TRANSPARENT para no pisar el resto de imágenes
-    canvas_final2 = cv2.warpPerspective(im1,  h_canvas.dot(h1), (s_x, s_y), canvas_final, borderMode = cv2.BORDER_CONSTANT)
-    canvas_final2 = cv2.warpPerspective(im2, h_canvas, (s_x, s_y), canvas_final2, borderMode = cv2.BORDER_TRANSPARENT)
-
-    imgOrdSrc = ordSrcMod.copy()
-
-    # Para la mejor visualización de las distancias geométricas entre los puntos y sus imágenes,
-    # aquí se colorea con una línea roja la distancia entre la imagen de un punto y su correspondencia.
-    for i in range(len(ordSrcMod)):
-        imgSrc3 = h_canvas.dot(h1).dot([ordSrcMod[i][0], ordSrcMod[i][1],1])
-        imgOrdSrc[i] = [imgSrc3[0]/imgSrc3[2], imgSrc3[1]/imgSrc3[2]]
-        imgOrdDst3 = h_canvas.dot([ordDstMod[i][0], ordDstMod[i][1], 1])
-        #Se filtran solo los puntos que aparecen cerca del canvas final para crear líneas
-        if(imgOrdSrc[i][0] <= 2000 and imgOrdSrc[i][1] <= 2000 and imgOrdDst3[0]/imgOrdDst3[2] <= 2000 and imgOrdDst3[1]/imgOrdDst3[2] <= 2000):
-            if(imgOrdSrc[i][0] >= -2000 and imgOrdSrc[i][1] >= -2000 and imgOrdDst3[0]/imgOrdDst3[2] >= -2000 and imgOrdDst3[1]/imgOrdDst3[2] >= -2000):
-                #Se crean las líneas rojas de distancias
-                cv2.line(canvas_final2, (int(imgOrdSrc[i][0]), int(imgOrdSrc[i][1])), (int(imgOrdDst3[0]/imgOrdDst3[2]),int(imgOrdDst3[1]/imgOrdDst3[2])), (0,0,255), 2)
-    # Se pinta el canvas final
-    p = auxiliar.pintaI(canvas_final2, "prueba")
-    #cv2.imwrite("./resultados/out1.png", p)
-
-
-if __name__ == "__main__":
-  main()
+    print("Modo de ejemplo con imágenes Yosemite")
+    print("Ejecuta \n   \"python3 main.py manual -h\" \npara ver instrucciones del modo manual")
+    creaMosaico("./imagenes/yosemite1.jpg", "./imagenes/yosemite2.jpg", 1200, 600)

@@ -100,3 +100,8 @@ def lm(f, inicial, objetivo, umbral = 1e-4, max_iter = 150):
     iters += 1
 
   return x, norm
+
+
+if __name__ == "__main__":
+  print("Este es un módulo auxiliar que no puede ejecutarse por sí solo.")
+  print("Por favor, ejecuta 'python3 main.py'")
