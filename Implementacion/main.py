@@ -234,7 +234,7 @@ if __name__ == "__main__":
   parser = argparse.ArgumentParser(description =
       "Ejecuta sin argumentos para ver un ejemplo o ejecuta con 'manual' para introducir tu propio ejemplo")
   subparsers = parser.add_subparsers(help="Modo manual: Ejemplifica obtención de homografía \ncon construcción de mosaico entre dos imágenes hallando sus puntos SIFT", dest="modo")
-  manual = subparsers.add_parser('manual')
+  manual = subparsers.add_parser('manual', description="Ejemplifica obtención de homografía \ncon construcción de mosaico entre dos imágenes hallando sus puntos SIFT")
   manual.add_argument('archivo1', type=str, help="Archivo de imagen 1")
   manual.add_argument('archivo2', type=str, help="Archivo de imagen 2")
   args = parser.parse_args()
@@ -243,5 +243,6 @@ if __name__ == "__main__":
     creaMosaico(args.archivo1, args.archivo2, 1300, 700)
   else:
     print("Modo de ejemplo con imágenes Yosemite")
+    print("Obtiene puntos SIFT mediante OpenCV y calcula una homografía para los mismos con el error de Sampson")
     print("Ejecuta \n   \"python3 main.py manual -h\" \npara ver instrucciones del modo manual")
     creaMosaico("./imagenes/yosemite1.jpg", "./imagenes/yosemite2.jpg", 1200, 600)

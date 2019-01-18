@@ -8,9 +8,19 @@ Para elegir qué homografía usaremos en estos casos una de las técnicas fundam
 
 En este trabajo vamos a intentar explorar la estimación de una homografía con una función de coste muy concreta, el *error de Sampson*. Esta función de coste es una estimación de la distancia geométrica de la que hablábamos antes, cuya expresión es compleja para su optimización, pero que puede aproximarse de forma efectiva. El error de Sampson nos permite justo esto, encontrar una aproximación eficiente del error geométrico que producimos al realizar la homografía. Desarrollamos esta idea en la sección [Error de Sampson].
 
-Las posibles aplicaciones de este algoritmo son las de mejorar el proceso de estimación de homografías que estudiamos en la segunda práctica. Por un lado, esto añade calidad a la homografía resultante, ya que al reducir el error geométrico de los puntos con sus imágenes por la homografía, obtenemos un resultado visualmente mejor. Por otro, añade consistencia en los casos en los que las correspondencias tengan más ruido, permitiendo resolver una gama más amplia de problemas en los que antes el algoritmo no tenía la suficiente calidad como para ser aceptable. Por último, cabe destacar que las herramientas necesarias para resolver un problema tan abstracto como es el de estimar una homografía bajo ciertas restricciones son importantes por sí mismas, por la utilidad que puedan dar en otros ámbitos y problemas.
+Las posibles aplicaciones de este algoritmo son las de mejorar el proceso de estimación de homografías para mosaicos que estudiamos en la segunda práctica. Por un lado, esto añade calidad a la homografía resultante, ya que al reducir el error geométrico de los puntos con sus imágenes por la homografía, obtenemos un resultado visualmente mejor. Por otro, añade consistencia en los casos en los que las correspondencias tengan más ruido, permitiendo resolver una gama más amplia de problemas en los que antes el algoritmo no tenía la suficiente calidad como para ser aceptable. Por último, cabe destacar que las herramientas necesarias para resolver un problema tan abstracto como es el de estimar una homografía bajo ciertas restricciones son importantes por sí mismas, por la utilidad que puedan dar en otros ámbitos y problemas.
 
-El trabajo se divide en el código adjunto en el que implementamos todos estos algoritmos con ejemplos de uso para que sean más fáciles de entender y cuyo funcionamiento se explica en el [Apéndice: Funcionamiento del código adjunto], y en esta memoria, en la que explicamos el fundamento teórico de los mismos. En las siguientes secciones veremos: una introducción al problema a resolver; la descripción y obtención del Error de Sampson junto a su importancia y, por último, la explicación del algoritmo final, que se puede dividir en estimación inicial y el paso iterativo para ir minimizando el error de Sampson. La estimación inicial se hace con el algoritmo *Direct Linear Transform* (DLT) y el método iterativo usa el algoritmo de Levenberg-Marquadt.
+El trabajo se divide en 
+
+1. El código adjunto en el que implementamos todos estos algoritmos con ejemplos de uso para que sean más fáciles de entender y cuyo funcionamiento se explica en el [Apéndice: Funcionamiento del código adjunto] y
+2. esta memoria, en la que explicamos el fundamento teórico de los mismos. 
+
+En las siguientes secciones veremos: 
+
+- una introducción al problema a resolver,
+- la descripción y obtención del Error de Sampson junto a su importancia y,
+- la explicación del algoritmo final, que se puede dividir en estimación inicial y el paso iterativo para ir minimizando el error de Sampson. 
+  La estimación inicial se hace con el algoritmo *Direct Linear Transform* (DLT) y el método iterativo usa el algoritmo de Levenberg-Marquadt.
 
 # El problema de estimación de homografías
 
@@ -80,6 +90,7 @@ $$JJ^T = \sum_{i = 1}^4 \left(\frac{\partial C_h(\mathbf{X})}{\partial \mathbf{X
 lo que nos permite calcular $JJ^T$ directamente a partir de $\mathcal{C}_H$.
 
 En la implementación utilizaremos esta idea para calcularla como las diferencias finitas de primer orden con la función `iterativo.jacobiano`.
+La implementación puede consultarse en el código adjunto, cuya estructura se explica en el [Apéndice: Funcionamiento del código adjunto].
 
 ## Cálculo para múltiples correspondencias
 
@@ -126,6 +137,8 @@ Este algoritmo nos da una buena aproximación inicial.
 La normalización nos permite evitar errores derivados de la precisión limitada en el cálculo y mejorar los resultados.
 El cálculo del vector singular es el algoritmo utilizado normalmente para la resolución de sistemas de ecuaciones lineales en los que hay más ecuaciones que incógnitas (asumimos por tanto que $N >4$).
 
+La implementación puede consultarse en el código adjunto, cuya estructura se explica en el [Apéndice: Funcionamiento del código adjunto].
+
 ## Método iterativo
 
 El método iterativo que se ha usado es, como ya se ha mencionado previamente, el algoritmo de Levenberg-Marquadt. Este algoritmo es una variación de Gauss-Newton en la que se cambia la ecuación de iteración, que, en función de la convergencia del algoritmo oscila entre el método de Gauss-Newton y el método de gradiente descendente.
@@ -153,7 +166,10 @@ La importancia de que $\lambda$ cambie no debe de pasar por alto, ya que es el n
 
 Esta dualidad entre Gauss-Newton y descenso por gradiente es el núcleo de la iteración de Levenberg-Marquadt y es lo que la diferencia de estos otros dos métodos. Su flexibilidad le permite aplicar Gauss-Newton cuando la exploración va bien y cada vez se disminuye más el error, y si va mal se acerca al descenso por gradiente para hacer saltos más amplios en la dirección de menor coste.
 
-Una de las funciones que hemos necesitado implementar para realizar este método iterativo ha sido el jacobiano, para poder resolver la ecuación normal aumentada. Como queremos aproximar una derivada, lo que hacemos es simplemente definir un $\delta_i$ que depende de la variable $x_i$ que queramos derivar de $f$ y realizamos la derivada i-esima como $(f(x+\delta_i e_i)-f(x))/\delta_i$ donde $e_i$ denota el i-ésimo vector de la base usual. El resto de la estructura se comenta a continuación:
+Una de las funciones que hemos necesitado implementar para realizar este método iterativo ha sido el jacobiano, para poder resolver la ecuación normal aumentada. Como queremos aproximar una derivada, lo que hacemos es simplemente definir un $\delta_i$ que depende de la variable $x_i$ que queramos derivar de $f$ y realizamos la derivada i-esima como $(f(x+\delta_i e_i)-f(x))/\delta_i$ donde $e_i$ denota el i-ésimo vector de la base usual. 
+Por eficiencia la función implementada devuelve la traspuesta del jacobiano.
+
+El resto de la estructura se comenta a continuación:
 
 :::{.algorithm name="\textit{Iteración Levenberg-Marquadt}"}
 
@@ -177,6 +193,8 @@ Salida
    d) actualizamos $\lambda$ dividiendo por 10 si hemos disminuido el error, o multiplicando por 10 si no lo hemos hecho.
 
 :::
+
+La implementación puede consultarse en el código adjunto, cuya estructura se explica en el [Apéndice: Funcionamiento del código adjunto].
 
 ## Análisis de los resultados
 
@@ -232,6 +250,16 @@ Por otro lado, una forma educativa, bonita y visual de ver cómo funciona la opt
 # Apéndice: Funcionamiento del código adjunto {.unnumbered}
 
 El código implementado se adjunta en la carpeta `Implementacion`.
+
+Como se describe en este documento hemos implementado:
+
+1. el cálculo del error de Sampson para una homografía y un conjunto de correspondencias de acuerdo con la derivación teórica (`main.py`, función `error_sampson`),
+2. el algoritmo iterativo Levenberg-Marquadt para la optimización del error de Sampson (`iterativo.py`, función `lm`),
+3. la estimación inicial con el algoritmo DLT normalizado ( `main.py`, función `inicialHom`)
+4. la estimación de una homografía combinando estos algoritmos (`main.py`, función `getHom`),
+5. funciones auxiliares para crear un problema de estimación de homografías haciendo uso del algoritmo para la creación de un mosaico (`main.py`, función `creaMosaico`, haciendo uso de las funciones auxiliares de la práctica 2 de `auxiliar.py`).
+
+El programa consta de una interfaz sencilla por línea de comandos.
 Para ver el ejemplo mencionado basta ejecutar el programa principal sin argumentos:
 ```bash
 python3 main.py
@@ -242,7 +270,7 @@ En caso de que queramos ejecutar el programa manualmente con dos imágenes llama
 python3 manual [nombre de fichero imagen 1] [nombre de fichero de imagen 2]
 ```
 
+Se incluye también una sencilla ayuda que especifica esta información, accesible mediante la opción `-h`.
+
 El tiempo de ejecución del programa varía entre los 10 segundos y los 30 segundos en función del ordenador utilizado.
 Se incluyen algunas imágenes de la práctica 2 con las que observar el rendimiento del programa.
-
-\newpage
