@@ -67,7 +67,7 @@ def getOrderedKeypoints(kp1, kp2, matcher):
 	srcPoints = []
 	dstPoints = []
 
-	for m in sorted(matcher, key = lambda x: x.distance)[:400]:
+	for m in sorted(matcher, key = lambda x: x.distance)[:100]:
 		# Para cada pareja del matcher cogemos el correspondiente keypoint
 		# del origen y el del destino, calculamos sus puntos con .pt y los
 		# añadimos al vector final
